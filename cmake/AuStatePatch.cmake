@@ -1,0 +1,15 @@
+# Pinned upstream AU SetState restores a preset before validating its chunk and
+# treats -1 from UnserializeState as success. Patch a build-local copy only.
+file(READ "${IPLUG2_DIR}/IPlug/AUv2/IPlugAU.cpp" au_source)
+string(FIND "${au_source}" "  RestorePreset(presetName);" restore_pos)
+string(FIND "${au_source}" "if (!UnserializeState(chunk, 0))" decode_pos)
+if(restore_pos EQUAL -1 OR decode_pos EQUAL -1)
+  message(FATAL_ERROR "Review AU state patch against updated iPlug2")
+endif()
+string(REPLACE "  RestorePreset(presetName);" "  // Scoria: validate complete state before changing parameters." au_source "${au_source}")
+string(REPLACE "if (!UnserializeState(chunk, 0))" "if (UnserializeState(chunk, 0) < 0)" au_source "${au_source}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/IPlugAU.cpp" "${au_source}")
+get_target_property(au_sources iPlug2::AUv2 INTERFACE_SOURCES)
+list(FILTER au_sources EXCLUDE REGEX "/IPlugAU\\.cpp$")
+set_property(TARGET iPlug2::AUv2 PROPERTY INTERFACE_SOURCES "${au_sources}" "${CMAKE_CURRENT_BINARY_DIR}/IPlugAU.cpp")
+set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/IPlugAU.cpp" PROPERTIES LANGUAGE OBJCXX)

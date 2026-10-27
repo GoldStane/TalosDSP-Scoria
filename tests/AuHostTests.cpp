@@ -1,10 +1,15 @@
 #include <AudioUnit/AudioUnit.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
+#include <limits>
 #include <string>
+#include <thread>
+#include <vector>
 
 void check(bool ok, const char *message) {
   if (!ok) {
@@ -18,11 +23,14 @@ void status(OSStatus result, const char *message) {
     std::exit(1);
   }
 }
-OSStatus input(void *, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt32, UInt32 frames,
-               AudioBufferList *data) {
+OSStatus input(void *source, AudioUnitRenderActionFlags *, const AudioTimeStamp *time, UInt32,
+               UInt32 frames, AudioBufferList *data) {
   for (UInt32 channel = 0; channel < data->mNumberBuffers; ++channel)
     for (UInt32 i = 0; i < frames; ++i)
-      static_cast<float *>(data->mBuffers[channel].mData)[i] = channel == 0 ? 0.125f : -0.25f;
+      static_cast<float *>(data->mBuffers[channel].mData)[i] =
+          *static_cast<bool *>(source) ? .1f * std::sin((time->mSampleTime + i) * .07)
+          : channel == 0               ? 0.125f
+                                       : -0.25f;
   return noErr;
 }
 int main(int argc, char **argv) {
@@ -61,7 +69,8 @@ int main(int argc, char **argv) {
       status(AudioUnitSetProperty(unit, kAudioUnitProperty_MaximumFramesPerSlice,
                                   kAudioUnitScope_Global, 0, &maximum, sizeof(maximum)),
              "maximum block size");
-      AURenderCallbackStruct callback{input, nullptr};
+      bool testTone = false;
+      AURenderCallbackStruct callback{input, &testTone};
       status(AudioUnitSetProperty(unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input,
                                   0, &callback, sizeof(callback)),
              "input callback");
@@ -74,7 +83,7 @@ int main(int argc, char **argv) {
       check(latency == 0., "zero reported latency");
       status(AudioUnitSetParameter(unit, 0, kAudioUnitScope_Global, 0, -12., 0),
              "change before preset recall");
-      AUPreset preset{0, CFSTR("M0 - Pass-through")};
+      AUPreset preset{0, CFSTR("Development - Distortion rig (48 kHz)")};
       status(AudioUnitSetProperty(unit, kAudioUnitProperty_PresentPreset, kAudioUnitScope_Global, 0,
                                   &preset, sizeof(preset)),
              "factory preset recall");
@@ -84,6 +93,14 @@ int main(int argc, char **argv) {
       check(defaultGain == 0., "factory preset restores unity");
       status(AudioUnitSetParameter(unit, 0, kAudioUnitScope_Global, 0, 6., 0), "input gain");
       status(AudioUnitSetParameter(unit, 1, kAudioUnitScope_Global, 0, -3., 0), "output gain");
+      for (UInt32 id : {3u, 6u, 10u, 13u})
+        status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, 0., 0),
+               "disable stages for M0 regression");
+      const std::array<float, 16> expected{
+          {6, -3, 0, 0, -47, 173, 0, 23, 61, 9, 0, 2, -4, 0, 1, -2}};
+      for (UInt32 id = 0; id < expected.size(); ++id)
+        status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, expected[id], 0),
+               "set M1 parameters");
       CFPropertyListRef saved = nullptr;
       UInt32 bytes = sizeof(saved);
       status(AudioUnitGetProperty(unit, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0,
@@ -94,12 +111,42 @@ int main(int argc, char **argv) {
       status(AudioUnitSetProperty(unit, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0,
                                   &saved, sizeof(saved)),
              "restore state");
+      auto candidate =
+          CFDictionaryCreateMutableCopy(nullptr, 0, static_cast<CFDictionaryRef>(saved));
+      std::vector<UInt8> oldState(sizeof(std::int32_t) + 3 * sizeof(double));
+      const std::int32_t version = 1;
+      const double oldValues[]{6., -3., 0.};
+      std::memcpy(oldState.data(), &version, sizeof(version));
+      std::memcpy(oldState.data() + sizeof(version), oldValues, sizeof(oldValues));
+      auto data = CFDataCreate(nullptr, oldState.data(), oldState.size());
+      CFDictionarySetValue(candidate, CFSTR("data"), data);
+      CFRelease(data);
+      CFPropertyListRef candidateProperty = candidate;
+      status(AudioUnitSetProperty(unit, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0,
+                                  &candidateProperty, sizeof(candidateProperty)),
+             "M0 state migration in actual AU");
+      AudioUnitParameterValue migratedAmp = 1.;
+      status(AudioUnitGetParameter(unit, 10, kAudioUnitScope_Global, 0, &migratedAmp),
+             "read migrated amp bypass");
+      check(migratedAmp == 0., "M0 remains pass-through");
+      status(AudioUnitSetProperty(unit, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0,
+                                  &saved, sizeof(saved)),
+             "restore full M1 state");
+      const double bad = std::numeric_limits<double>::quiet_NaN();
+      std::memcpy(oldState.data() + sizeof(version), &bad, sizeof(bad));
+      data = CFDataCreate(nullptr, oldState.data(), oldState.size());
+      CFDictionarySetValue(candidate, CFSTR("data"), data);
+      CFRelease(data);
+      check(AudioUnitSetProperty(unit, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0,
+                                 &candidateProperty, sizeof(candidateProperty)) != noErr,
+            "invalid AU state rejected");
+      CFRelease(candidate);
       CFRelease(saved);
-      for (UInt32 id = 0; id < 3; ++id) {
+      for (UInt32 id = 0; id < expected.size(); ++id) {
         AudioUnitParameterValue value = 0;
         status(AudioUnitGetParameter(unit, id, kAudioUnitScope_Global, 0, &value),
                "read restored parameter");
-        check(value == (id == 0 ? 6.f : id == 1 ? -3.f : 0.f), "state round trip");
+        check(value == expected[id], "all M1 parameters survive roundtrip and invalid state");
       }
       std::array<float, 2048> left{}, right{};
       struct Buffers {
@@ -126,6 +173,34 @@ int main(int argc, char **argv) {
                              reinterpret_cast<AudioBufferList *>(&buffers)),
              "render bypass");
       check(left.back() == 0.125f, "AU bypass dry");
+      if (rate == 48000.) {
+        testTone = true;
+        for (UInt32 id : {0u, 1u, 2u, 11u, 12u})
+          status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, 0., 0),
+                 "prepare NAM render");
+        status(AudioUnitSetParameter(unit, 10, kAudioUnitScope_Global, 0, 1., 0), "enable NAM");
+        double energy = 0.;
+        for (int attempt = 0; attempt < 200 && energy < .01; ++attempt) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          status(AudioUnitRender(unit, &flags, &time, 0, 2048,
+                                 reinterpret_cast<AudioBufferList *>(&buffers)),
+                 "NAM AU render");
+          time.mSampleTime += 2048;
+          energy = 0.;
+          for (float x : left) {
+            check(std::isfinite(x), "finite AU NAM");
+            energy += std::abs(x);
+          }
+        }
+        check(energy > .01, "installed-bundle NAM assets resolve and process");
+        status(AudioUnitSetParameter(unit, 13, kAudioUnitScope_Global, 0, 1., 0),
+               "enable independent cabinet");
+        status(AudioUnitRender(unit, &flags, &time, 0, 2048,
+                               reinterpret_cast<AudioBufferList *>(&buffers)),
+               "NAM plus FIR AU render");
+        for (float x : left)
+          check(std::isfinite(x), "finite NAM plus cabinet");
+      }
       status(AudioUnitReset(unit, kAudioUnitScope_Global, 0), "reset");
       status(AudioUnitUninitialize(unit), "uninitialize");
       status(AudioComponentInstanceDispose(unit), "dispose");

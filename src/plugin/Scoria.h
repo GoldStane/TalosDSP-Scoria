@@ -9,6 +9,7 @@ static_assert(std::atomic<double>::is_always_lock_free, "Host parameters must be
 
 class Scoria final : public iplug::Plugin {
 public:
+  void OnIdle() override;
   explicit Scoria(const iplug::InstanceInfo &info);
   bool SerializeState(iplug::IByteChunk &chunk) const override;
   int UnserializeState(const iplug::IByteChunk &chunk, int startPos) override;
@@ -19,4 +20,5 @@ public:
 private:
   scoria::Parameters parameters() const;
   scoria::AudioEngine engine_;
+  std::unique_ptr<scoria::AssetLoader> assets_;
 };

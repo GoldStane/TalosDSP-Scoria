@@ -431,3 +431,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ```
+
+## M1 inference and assets
+
+The complete following notices are distributed inside each plugin bundle in
+`Contents/Resources/assets/licenses/`:
+
+- `NAM-Core-MIT.txt`: NeuralAmpModelerCore, Copyright 2023 Steven Atkinson.
+- `nlohmann-MIT.txt`: JSON for Modern C++, Copyright 2013–2025 Niels Lohmann; Grisu2, Copyright 2009 Florian Loitsch.
+- `Eigen-MPL2.txt`, `Eigen-BSD.txt`, `Eigen-Apache.txt`, `Eigen-MINPACK.txt`: applicable Eigen source notices. `Eigen-SOURCE.md` gives the exact unmodified source revision and archive URL. Eigen is not covered by Scoria's MIT license.
+- `RiffSmith-MIT.txt`: Matt Hartman's RiffSmith Distorted capture; `RiffSmith-permission.md` preserves the author's explicit capture licensing statement.
+- `Jester-Brutal-Pack-Handbook.pdf`: Jester Dyne Productions' original CC0 dedication and recorded IR provenance.
+
+See `assets/manifest.json` for hashes and source URLs. The selected NAM model already includes a cabinet. These licenses grant redistribution rights; they do not establish subjective tone quality or endorsement.
+
+The build-local iPlug2 AU wrapper adaptation changes state validation order and error handling only; it is plainly marked in `cmake/AuStatePatch.cmake`. The original framework license above continues to apply.

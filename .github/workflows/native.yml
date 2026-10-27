@@ -21,7 +21,7 @@ jobs:
         if: runner.os == 'macOS'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DIPLUG_DEPLOY_PLUGINS=OFF
       - name: Build VST3 and core tests
-        run: cmake --build build --config Release --target Scoria-vst3 scoria_tests --parallel 3
+        run: cmake --build build --config Release --target Scoria-vst3 scoria_tests scoria_dsp_tests --parallel 3
       - name: Build AU and native host tests
         if: runner.os == 'macOS'
         run: cmake --build build --config Release --target scoria_au_tests --parallel 3
@@ -32,7 +32,12 @@ jobs:
         run: |
           mkdir -p "$HOME/Library/Audio/Plug-Ins/Components"
           cp -R build/out/Scoria.component "$HOME/Library/Audio/Plug-Ins/Components/"
-          auval -v aufx Scor TlDs
+          killall -9 AudioComponentRegistrar || true
+          for attempt in 1 2 3 4 5; do
+            if auval -v aufx Scor TlDs; then exit 0; fi
+            sleep 3
+          done
+          exit 1
       - name: Package complete bundles and notices
         shell: bash
         run: |
@@ -40,9 +45,9 @@ jobs:
           mkdir -p build/out/docs
           cp docs/*.md build/out/docs/
           cd build/out
-          cmake -E tar cfv "../../Scoria-0.0.1-${{ runner.os }}.zip" --format=zip .
+          cmake -E tar cfv "../../Scoria-0.0.2-${{ runner.os }}.zip" --format=zip .
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Scoria-0.0.1-${{ runner.os }}
-          path: Scoria-0.0.1-*.zip
+          name: Scoria-0.0.2-${{ runner.os }}
+          path: Scoria-0.0.2-*.zip
           if-no-files-found: error

@@ -1,52 +1,40 @@
-# M0 validation — 27 October 2026
+# Validation record — M1 development
 
-Local environment: macOS 26.7.1, Apple Silicon, AppleClang 21.0.0, Xcode Command Line Tools (full Xcode is not installed). This is a foundation build, not a validated metal tone or public v1 release.
+M1 acceptance is **not complete**. The default is an explicitly labeled development rig, not Tight Rhythm. The licensed model includes a cabinet; an amp-only capture and real guitar listening/tuning remain necessary. Current Windows CI and manual REAPER acceptance are not yet verified.
 
-## Commands and results
+## Baseline inspected
 
-All paths below are relative to the repository root. The final native build uses clean dependency downloads, not a preinstalled SDK.
+At M0 commit `c1a39dbbb36b923891f69430a2b6203baa5e4535`, local native build and both CTest tests passed. GitHub Actions run `40561427926`: Windows job `122391177344` passed configure/build/tests/package; macOS job `122391177743` passed Universal builds and CTest, but failed AU discovery (`didn't find the component`, exit 2). The workflow now restarts the disposable runner's registrar and retries validation, still failing if validation never succeeds. This workflow change is not proof of a passing new CI run.
 
-```sh
-cmake -S . -B build-clean -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
-cmake --build build-clean --target Scoria-vst3 scoria_au_tests scoria_tests -j 6
-ctest --test-dir build-clean --output-on-failure
-arch -x86_64 build-clean/scoria_tests
-arch -x86_64 build-clean/src/plugin/scoria_au_tests "$PWD/build-clean/out/Scoria.component"
-lipo -archs build-clean/out/Scoria.vst3/Contents/MacOS/Scoria
-lipo -archs build-clean/out/Scoria.component/Contents/MacOS/Scoria
-```
+## Local environment and commands
 
-Configure and both plugin builds passed. Both bundles contain x86_64 and arm64 slices. CTest's core and AU-host tests passed on Apple Silicon; the core and AU-host executables also passed under Rosetta using their x86_64 slices. Rosetta is not physical Intel hardware. SDK downloads required network permission. AU registration requires access to macOS AudioComponent services: the first sandboxed run failed at registration, and the same test passed outside the sandbox. No local plugin installation was performed.
-
-The AU test loads the actual bundle, registers its exported factory in the test process, and checks factory-preset recall, all three parameter values through save/load, input/output gain, bypass, zero reported latency, 1→1/1→2/2→2 layouts, 44.1/48/88.2/96 kHz, 16–2048-frame rendering and repeated create/reset/uninitialize/dispose operations. It uses synthetic constants and does not open the editor.
+macOS 26.7.1, Apple Silicon, AppleClang 21, CMake, Xcode Command Line Tools. Dependencies were inspected at the exact pins in `cmake/Dependencies.cmake` and `cmake/Nam.cmake`. Initial local configuration reused the checked-out pinned NAM/Eigen and M0 iPlug2/VST3 trees:
 
 ```sh
-cmake -S . -B build-core -DSCORIA_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Release
-cmake --build build-core -j 4
-ctest --test-dir build-core --output-on-failure
-cmake -S . -B build-sanitize -DSCORIA_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Debug '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer' '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined'
-cmake --build build-sanitize -j 4
-ctest --test-dir build-sanitize --output-on-failure
+cmake -S . -B build-m1 -DSCORIA_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_SOURCE_DIR_NAM="$PWD/third_party/NeuralAmpModelerCore"
+cmake --build build-m1 -j4
+ctest --test-dir build-m1 --output-on-failure
+cmake -S . -B build-m1-native -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DFETCHCONTENT_SOURCE_DIR_NAM="$PWD/third_party/NeuralAmpModelerCore" -DFETCHCONTENT_SOURCE_DIR_IPLUG2="$PWD/build-clean/_deps/iplug2-src" -DFETCHCONTENT_SOURCE_DIR_VST3SDK="$PWD/build-clean/_deps/iplug2-src/Dependencies/IPlug/VST3_SDK"
+cmake --build build-m1-native --target Scoria-vst3 scoria_au_tests scoria_tests scoria_dsp_tests -j4
+ctest --test-dir build-m1-native --output-on-failure
 ```
 
-Release core and AddressSanitizer/UndefinedBehaviorSanitizer checks passed. Float/double tests cover pass-through, gain, bypass, smoothing, in-place processing, layouts, zero/one/16–2048 frames, four sample rates, non-finite/subnormal inputs, missing input, rejected layouts and repeated parameter toggling. The initial test compilation exposed a null-pointer template deduction issue in the test call sites; explicit template arguments fixed it before the passing runs.
+Release headless tests and the in-process AU host test passed. Universal VST3/AU builds succeeded. `auval -v aufx Scor TlDs` passed all checks against the Universal AU build; it reported one non-fatal warning that the preset name is not retained in retrieved class data. The AU host test must run outside this environment's filesystem/service sandbox; sandbox registration failure is not reported as a plugin test success.
 
-```sh
-/tmp/scoria-format/clang_format/data/bin/clang-format --dry-run --Werror src/audio/*.h src/plugin/*.h src/plugin/*.cpp tests/*.cpp
-git diff --check
-plutil -lint src/plugin/resources/Scoria-AU-Info.plist src/plugin/resources/Scoria-VST3-Info.plist
-```
+## Coverage
 
-Passed. clang-format 18.1.8 was installed only into a temporary developer-tools directory. There is no Python/formatter runtime requirement for users. Initial native compilation reported upstream VST3 integer-to-double conversion and AU variable-length-array warnings; no Scoria compile errors remained.
+- Original float/double gain, bypass, zero-length, layouts, missing channels, in-place and parameter-ramp regression tests at 44.1/48/88.2/96 kHz, sizes 1–2048.
+- Gate opening/closing, DC rejection, measurable boost nonlinearity and dry bypass.
+- Boost 4× versus 1× normalized third-harmonic foldback measurement; this is one synthetic test, not a complete aliasing audit.
+- FIR output against a reference convolution; recorded WAV preparation at four rates; malformed WAV rejection.
+- Actual bundled NAM inference at 48 kHz, sizes 1/16/32/64/127/128/256/511/512/1024/2048, deterministic output across block boundaries, transactional failed replacement, missing/unsupported/altered model rejection.
+- Worker generation handoffs through rate changes and unchanged-rate requests retaining prepared assets. NAM rejects 44.1/88.2/96 kHz rather than running at the wrong rate.
+- Full NAM+IR stereo in-place processing, global exact dry bypass and input/output placement around nonlinearity.
+- Version-1 migration, version-2 state roundtrip, truncation/nonfinite/unknown-asset rejection before mutation.
+- Actual AU instantiation, factory recall, all 16 parameters roundtrip, M0 migration and invalid state rejection, layouts/rates/gain/bypass/lifecycle, and NAM+IR rendering from bundle-relative resources.
+- `auval` open/initialization, default formats, required/recommended properties, custom UI, factory preset, 16 published parameters, reset retention, render at 22.05–192 kHz, mono/stereo layouts, parameter scheduling and MIDI checks.
+- C++ allocation counters around NAM/pipeline processing. Debug tests additionally disable Eigen allocations around NAM processing. This does not instrument every possible system allocation or prove host-level real-time performance.
 
-## Not verified
+## Remaining acceptance checks
 
-- Windows compilation/runtime and GitHub Actions: workflow added, not dispatched or claimed green in this local task.
-- REAPER plugin loading, GUI interaction, DAW automation, saved-project recall, offline bounce, and subjective listening. REAPER launch encountered an existing missing-project error referring to an external volume; the user's session/settings were left unchanged.
-- Visual GUI rendering and all page interactions: compiled, not visually validated.
-- `auval`: available, but not run because Scoria was not installed in a component discovery directory. CI includes installation and auval on its disposable runner.
-- Pluginval: not installed locally; manual command documented.
-- Physical Intel and Windows machines; older supported macOS versions.
-- Worst-case callback timing, audio-device glitches/CPU, signing, notarization, installers and public release readiness.
-
-Before M1 integration, complete native CI and the manual REAPER/validator checklist in BUILD.md. Then implement safe NAM preparation and asset ownership with a proven-redistributable high-gain capture/cab IR, gate and overdrive, followed by a level-matched DI recording.
+Run the new Windows workflow, pluginval, REAPER editor/automation/session/offline-render checks, and level-matched listening with an actual legal DI recording. No production tone quality, live glitch-free operation, Windows M1 binary, signing or notarization is claimed. Known limitations: 48 kHz-only NAM, temporary silence after reset while preparation completes, no arbitrary model import, a single IR, direct-convolution CPU cost, and incomplete default amp-only preset.

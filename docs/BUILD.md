@@ -1,14 +1,14 @@
-# Building and validating Scoria 0.0.1
+# Building and validating Scoria 0.0.2
 
 ## Prerequisites
 
-CMake 3.25+, Git, and a C++17 compiler. Windows requires Visual Studio 2022 Desktop development with C++ and the Windows SDK. macOS requires Xcode Command Line Tools (or Xcode) and a macOS SDK. No prebuilt Skia libraries are needed: IGraphics uses NanoVG/Metal on macOS and NanoVG/OpenGL 2 on Windows. First configuration needs GitHub access; subsequent builds can be offline using `-DFETCHCONTENT_UPDATES_DISCONNECTED=ON` after dependencies are populated. Dependencies are development-only.
+CMake 3.25+, Git, and a C++17 compiler. Windows requires Visual Studio 2022 Desktop development with C++ and the Windows SDK. macOS requires Xcode Command Line Tools (or Xcode) and a macOS SDK. No prebuilt Skia libraries are needed: IGraphics uses NanoVG/Metal on macOS and NanoVG/OpenGL 2 on Windows. First configuration needs GitHub and GitLab access (pinned NAM Core/Eigen); subsequent builds can be offline using `-DFETCHCONTENT_UPDATES_DISCONNECTED=ON` after dependencies are populated. Dependencies are development-only.
 
 ## macOS (Universal)
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DIPLUG_DEPLOY_PLUGINS=OFF
-cmake --build build --target Scoria-vst3 scoria_au_tests scoria_tests --parallel 4
+cmake --build build --target Scoria-vst3 scoria_au_tests scoria_tests scoria_dsp_tests --parallel 4
 ctest --test-dir build --output-on-failure
 lipo -archs build/out/Scoria.vst3/Contents/MacOS/Scoria
 lipo -archs build/out/Scoria.component/Contents/MacOS/Scoria
@@ -20,7 +20,7 @@ The AU integration test loads the built bundle and registers its factory only in
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DIPLUG_DEPLOY_PLUGINS=OFF
-cmake --build build --config Release --target Scoria-vst3 scoria_tests --parallel 4
+cmake --build build --config Release --target Scoria-vst3 scoria_tests scoria_dsp_tests --parallel 4
 ctest --test-dir build -C Release --output-on-failure
 ```
 
@@ -34,9 +34,11 @@ cmake --build build-core --config Release
 ctest --test-dir build-core -C Release --output-on-failure
 cmake -S . -B build-sanitize -DSCORIA_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Debug '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer' '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined'
 cmake --build build-sanitize
-ctest --test-dir build-sanitize --output-on-failure
-clang-format -i src/audio/*.h src/plugin/*.h src/plugin/*.cpp tests/*.cpp
+ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build-sanitize --output-on-failure
+clang-format -i src/audio/*.h src/dsp/*.h src/dsp/*.cpp src/models/*.h src/models/*.cpp src/plugin/*.h src/plugin/*.cpp tests/*.cpp
 ```
+
+On macOS, AddressSanitizer leak detection is unsupported; `detect_leaks=0` disables that check while ASan and UBSan remain active.
 
 ## Opt-in local installation and validators
 
@@ -51,6 +53,14 @@ pluginval --strictness-level 5 --validate /absolute/path/to/Scoria.vst3
 
 ## Manual REAPER acceptance
 
-Use a new test project and legal dry DI or synthetic audio at safe monitor levels. Scan the installed plugin, add it to a track, open the editor, and visit all four tabs. Verify the three global controls appear in the host automation list; future effects must remain unavailable. With both gains at 0 dB the output should null against the input after routing alignment. Change each gain, toggle bypass, and confirm smooth transitions and dry bypass. Mono→stereo should carry the same sample on both channels; stereo should retain distinct left/right content.
+Use your own dry guitar DI at **48 kHz**, starting at low monitor volume. The sole development preset uses a captured amp-and-cab rig, gate and boost; separate CAB defaults off. Visit all four pages and verify each implemented control in the host automation list. Confirm gate threshold/release, boost drive/tone/level, NAM input/output trims, cabinet bypass/level and global controls are audible and save correctly. Crunch/Clean and modulation/time effects remain unavailable.
 
-Save/reopen a project with nonzero gains and bypass set; confirm exact control recall. Exercise 44.1/48/88.2/96 kHz and buffer sizes 16–2048, playback stop/start, offline render, repeated insert/remove and editor reopen. Measure worst-case callback timing and listen for glitches, not only average CPU. Record actual results in VALIDATION.md. M0 should sound like the source with gain, not like an amplifier.
+Enable the separate IR deliberately for convolution testing; this adds a second cabinet coloration to the bundled model. With every stage disabled and both gains at 0 dB, output should null against dry DI. Global bypass must preserve dry audio regardless of effects. Change parameters during sustained audio and listen for clicks. Test mono→mono, mono→stereo and distinct stereo input; save/reopen projects, recall the development preset, and migrate an M0 project.
+
+At 44.1/88.2/96 kHz, NAM is explicitly unsupported and an enabled amp is silent. Disable AMP to test gate/boost/cab, or use Global bypass. Return to 48 kHz and wait for the worker to prepare the model. Exercise buffers 16–2048 plus irregular sizes, reset/restart, offline render and repeated insert/remove/editor reopen. Short silence after reset is an acknowledged limitation. Record results in VALIDATION.md; synthetic tests do not prove guitar tone quality or glitch-free host performance.
+
+## Assets and packaging
+
+Configuration verifies every manifest SHA-256. The build copies `assets/` into **both** native bundle Resources directories. Keep these directories intact. Do not substitute arbitrary `.nam` files: this development build accepts only the audited bundled model hash. NAM Core and Eigen are fetched at pinned commits during development, not by end users. The plugin works offline after installation.
+
+To reproduce timing output, run `build/scoria_dsp_tests /absolute/path/to/assets` (Windows: `build/Release/scoria_dsp_tests.exe`). This is an offline synthetic-input benchmark, not a live DAW callback guarantee. Debug/sanitizer runs are unsuitable for production CPU estimates.

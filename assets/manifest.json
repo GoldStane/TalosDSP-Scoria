@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "assets": [
+    {
+      "id": "riffsmith-distorted-v1",
+      "file": "models/riffsmith-distorted.nam",
+      "name": "RiffSmith Distorted",
+      "creator": "Matt Hartman",
+      "url": "https://github.com/hartmamt/riffsmith/blob/228b801ccc8b518d0a1fb53a8e63355a2fbd153f/public/nam/models/riffsmith-distorted.nam",
+      "license": "MIT",
+      "permission": "https://github.com/hartmamt/riffsmith/blob/228b801ccc8b518d0a1fb53a8e63355a2fbd153f/README.md#licensing",
+      "sample_rate": 48000,
+      "includes_cabinet": true,
+      "architecture": "SlimmableContainer (WaveNet)",
+      "status": "Development: not validated as a modern-metal factory tone",
+      "sha256": "ec52e16296f96fdd1d07d1aaa699e33e17df253f026f785f135080e1eb5db007"
+    },
+    {
+      "id": "jester-cookie-monster-v1",
+      "file": "irs/jester-cookie-monster.wav",
+      "name": "Jester Cookie Monster",
+      "creator": "Bastian Karschewski / Jester Dyne Productions",
+      "url": "https://www.jester-dyne-productions.com/content/files/2023/04/JestersBrutalPack_1.0.zip",
+      "license": "CC0-1.0",
+      "permission": "licenses/Jester-Brutal-Pack-Handbook.pdf page 3; patch 1 on page 5",
+      "sample_rate": 48000,
+      "cabinet": "Modified oversized BG412S 4x12, Vintage 30, SM57",
+      "preparation": "Windowed sinc resampling if needed; first 42.67 ms, maximum 4096 taps, 128-tap cosine tail fade; no normalization",
+      "sha256": "48b4e8dc8bde8595f8b8153128e99debd981c30b2b7a427e8bf8f3db0a84f49f"
+    }
+  ]
+}
