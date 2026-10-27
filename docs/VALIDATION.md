@@ -1,6 +1,6 @@
 # Validation record — M1 development
 
-M1 acceptance is **not complete**. The default is an explicitly labeled development rig, not Tight Rhythm. The licensed model includes a cabinet; an amp-only capture and real guitar listening/tuning remain necessary. Current Windows CI and manual REAPER acceptance are not yet verified.
+M1 acceptance is **not complete**. The default is an explicitly labeled development rig, not Tight Rhythm. The licensed model includes a cabinet; an amp-only capture and real guitar listening/tuning remain necessary. Native CI run `40572630277` passed for commit `ec1f078` on Windows x64 and macOS Universal; manual REAPER acceptance and listening remain unverified.
 
 ## Baseline inspected
 
@@ -21,6 +21,10 @@ ctest --test-dir build-m1-native --output-on-failure
 
 Release headless tests and the in-process AU host test passed. Universal VST3/AU builds succeeded. `auval -v aufx Scor TlDs` passed all checks against the Universal AU build; it reported one non-fatal warning that the preset name is not retained in retrieved class data. The AU host test must run outside this environment's filesystem/service sandbox; sandbox registration failure is not reported as a plugin test success.
 
+## CI result
+
+GitHub Actions run `40572630277` (commit `ec1f078`) passed both jobs. `windows-2022` configured, built `Scoria-vst3`, `scoria_tests` and `scoria_dsp_tests`, ran CTest and packaged the VST3. `macos-14` built the Universal VST3/AU, ran all three CTest tests, passed `auval -v aufx Scor TlDs` and packaged both bundles. This proves build, automated test and AU validation on GitHub-hosted runners, not a manual DAW session.
+
 ## Coverage
 
 - Original float/double gain, bypass, zero-length, layouts, missing channels, in-place and parameter-ramp regression tests at 44.1/48/88.2/96 kHz, sizes 1–2048.
@@ -37,4 +41,4 @@ Release headless tests and the in-process AU host test passed. Universal VST3/AU
 
 ## Remaining acceptance checks
 
-Run the new Windows workflow, pluginval, REAPER editor/automation/session/offline-render checks, and level-matched listening with an actual legal DI recording. No production tone quality, live glitch-free operation, Windows M1 binary, signing or notarization is claimed. Known limitations: 48 kHz-only NAM, temporary silence after reset while preparation completes, no arbitrary model import, a single IR, direct-convolution CPU cost, and incomplete default amp-only preset.
+Run pluginval, REAPER editor/automation/session/offline-render checks, and level-matched listening with an actual legal DI recording. No production tone quality, live glitch-free operation, manual Windows VST3 host validation, signing or notarization is claimed. Known limitations: 48 kHz-only NAM, temporary silence after reset while preparation completes, no arbitrary model import, a single IR, direct-convolution CPU cost, and incomplete default amp-only preset.
