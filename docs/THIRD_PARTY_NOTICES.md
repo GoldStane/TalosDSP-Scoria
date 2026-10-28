@@ -443,6 +443,12 @@ The complete following notices are distributed inside each plugin bundle in
 - `RiffSmith-MIT.txt`: Matt Hartman's RiffSmith Distorted capture; `RiffSmith-permission.md` preserves the author's explicit capture licensing statement.
 - `Jester-Brutal-Pack-Handbook.pdf`: Jester Dyne Productions' original CC0 dedication and recorded IR provenance.
 
-See `assets/manifest.json` for hashes and source URLs. The selected NAM model already includes a cabinet. These licenses grant redistribution rights; they do not establish subjective tone quality or endorsement.
+See `assets/manifest.json` for hashes and source URLs. The legacy RiffSmith model includes a cabinet; the new Lum Herbert model is amp-only. These licenses grant redistribution rights; they do not establish subjective tone quality or endorsement.
 
 The build-local iPlug2 AU wrapper adaptation changes state validation order and error handling only; it is plainly marked in `cmake/AuStatePatch.cmake`. The original framework license above continues to apply.
+
+## Lum Herbert 4 capture
+
+Distributed unchanged from VoLum commit `ddb7822ce06df9eaa74156027cf175a9ffe8305a`. Creator credit: Lum. Full MIT notice: `assets/licenses/VoLum-MIT.txt`; evidence: `assets/licenses/VoLum-permission.md`. Copyright 2024–2026 Steffen Dangmann and VoLum contributors; portions copyright 2022–2025 Steven Atkinson and contributors.
+
+The build-local VST3 lifecycle adaptation publishes offline rendering mode before reset. It retains the original framework license and does not alter upstream checkouts.

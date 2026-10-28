@@ -27,6 +27,19 @@
       "cabinet": "Modified oversized BG412S 4x12, Vintage 30, SM57",
       "preparation": "Windowed sinc resampling if needed; first 42.67 ms, maximum 4096 taps, 128-tap cosine tail fade; no normalization",
       "sha256": "48b4e8dc8bde8595f8b8153128e99debd981c30b2b7a427e8bf8f3db0a84f49f"
+    },
+    {
+      "id": "lum-herbert-4-v1",
+      "file": "models/volum-herbert-4.nam",
+      "name": "Lum Herbert 4 (amp only)",
+      "creator": "Lum / guitarlum (VoLum)",
+      "url": "https://github.com/guitarlum/VoLum/blob/ddb7822ce06df9eaa74156027cf175a9ffe8305a/rigs/Diezel%20Herbert%20Mk1/AMP-Herb-4.nam",
+      "license": "MIT",
+      "permission": "licenses/VoLum-permission.md; licenses/VoLum-MIT.txt",
+      "sample_rate": 48000,
+      "includes_cabinet": false,
+      "architecture": "SlimmableContainer (A2 WaveNet; full-size default)",
+      "sha256": "cb5c16b8ebb21efd778fba39eb231e27d40646048af105806772903453ff8f4b"
     }
   ]
 }

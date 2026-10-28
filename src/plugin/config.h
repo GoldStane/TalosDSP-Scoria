@@ -1,8 +1,8 @@
 #pragma once
 #define PLUG_NAME "TalosDSP Scoria"
 #define PLUG_MFR "TalosDSP"
-#define PLUG_VERSION_HEX 0x00000002
-#define PLUG_VERSION_STR "0.0.2"
+#define PLUG_VERSION_HEX 0x00000003
+#define PLUG_VERSION_STR "0.0.3"
 #define PLUG_UNIQUE_ID 'Scor'
 #define PLUG_MFR_ID 'TlDs'
 #define PLUG_URL_STR "https://github.com/GoldStane/TalosDSP-Scoria"

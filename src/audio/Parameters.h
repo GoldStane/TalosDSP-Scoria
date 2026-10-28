@@ -22,10 +22,11 @@ enum ParameterId {
   CabinetEnabled,
   CabinetSelection,
   CabinetOutput,
+  ModelSelection,
   ParameterCount
 };
 constexpr double kMinimumGainDb = -60., kMaximumGainDb = 24.;
-constexpr std::int32_t kStateVersion = 2;
+constexpr std::int32_t kStateVersion = 3;
 struct ParameterDefinition {
   const char *name;
   const char *unit;
@@ -47,7 +48,8 @@ inline constexpr std::array<ParameterDefinition, ParameterCount> kDefinitions{
      {"NAM output level", "dB", -60, 24, 0, .1},
      {"Cabinet enabled", "", 0, 1, 0, 1},
      {"Cabinet IR", "", 0, 1, 1, 1},
-     {"Cabinet output", "dB", -60, 24, 0, .1}}};
+     {"Cabinet output", "dB", -60, 24, 0, .1},
+     {"Distortion model", "", 0, 1, 1, 1}}};
 struct Parameters {
   double inputDb = 0., outputDb = 0.;
   bool bypass = false;
@@ -60,13 +62,15 @@ struct Parameters {
   bool cabinet = false;
   int cabinetId = 1;
   double cabinetDb = 0.;
+  int modelIndex = 0;
 };
 inline double sanitizeGain(double db) noexcept {
   return std::isfinite(db) ? std::clamp(db, kMinimumGainDb, kMaximumGainDb) : 0.;
 }
 inline Parameters fromValues(const std::array<double, ParameterCount> &v) noexcept {
-  return {v[0],       v[1], v[2] > .5,  v[3] > .5, v[4],  v[5],       v[6] > .5,  v[7] * .01,
-          v[8] * .01, v[9], v[10] > .5, v[11],     v[12], v[13] > .5, int(v[14]), v[15]};
+  return {v[0],      v[1],       v[2] > .5,  v[3] > .5, v[4],       v[5],
+          v[6] > .5, v[7] * .01, v[8] * .01, v[9],      v[10] > .5, v[11],
+          v[12],     v[13] > .5, int(v[14]), v[15],     int(v[16])};
 }
 inline bool validateValues(const std::array<double, ParameterCount> &values) noexcept {
   for (int i = 0; i < ParameterCount; ++i) {

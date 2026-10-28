@@ -1,4 +1,4 @@
-# Building and validating Scoria 0.0.2
+# Building and validating Scoria 0.0.3
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ CMake 3.25+, Git, and a C++17 compiler. Windows requires Visual Studio 2022 Desk
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DIPLUG_DEPLOY_PLUGINS=OFF
-cmake --build build --target Scoria-vst3 scoria_au_tests scoria_tests scoria_dsp_tests --parallel 4
+cmake --build build --target Scoria-vst3 scoria_au_tests scoria_tests scoria_dsp_tests scoria_completion_tests --parallel 4
 ctest --test-dir build --output-on-failure
 lipo -archs build/out/Scoria.vst3/Contents/MacOS/Scoria
 lipo -archs build/out/Scoria.component/Contents/MacOS/Scoria
@@ -20,7 +20,7 @@ The AU integration test loads the built bundle and registers its factory only in
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DIPLUG_DEPLOY_PLUGINS=OFF
-cmake --build build --config Release --target Scoria-vst3 scoria_tests scoria_dsp_tests --parallel 4
+cmake --build build --config Release --target Scoria-vst3 scoria_tests scoria_dsp_tests scoria_completion_tests --parallel 4
 ctest --test-dir build -C Release --output-on-failure
 ```
 
@@ -53,14 +53,18 @@ pluginval --strictness-level 5 --validate /absolute/path/to/Scoria.vst3
 
 ## Manual REAPER acceptance
 
-Use your own dry guitar DI at **48 kHz**, starting at low monitor volume. The sole development preset uses a captured amp-and-cab rig, gate and boost; separate CAB defaults off. Visit all four pages and verify each implemented control in the host automation list. Confirm gate threshold/release, boost drive/tone/level, NAM input/output trims, cabinet bypass/level and global controls are audible and save correctly. Crunch/Clean and modulation/time effects remain unavailable.
+Use a dry guitar DI at 44.1, 48, 88.2 or 96 kHz. Select **Tight Rhythm** and wait for “Assets ready” before live playback. Gate, overdrive, Lum Herbert amp-only NAM and Jester cabinet are enabled. Begin with input peaks around −24 to −12 dBFS; avoid interface clipping. Output defaults to −12 dB. This is gain staging, not a hard limiter; hot inputs and manual boosts can still clip.
 
-Enable the separate IR deliberately for convolution testing; this adds a second cabinet coloration to the bundled model. With every stage disabled and both gains at 0 dB, output should null against dry DI. Global bypass must preserve dry audio regardless of effects. Change parameters during sustained audio and listen for clicks. Test mono→mono, mono→stereo and distinct stereo input; save/reopen projects, recall the development preset, and migrate an M0 project.
+Visit all four pages and exercise host automation. Save/reopen and check the model, preset, cabinet and all parameter values. Legacy development rig selects the old RiffSmith amp-and-cab capture with the extra IR disabled; old saved sessions retain their explicit cabinet choice. NAM trims are Scoria processing controls, not captured physical knobs.
 
-At 44.1/88.2/96 kHz, NAM is explicitly unsupported and an enabled amp is silent. Disable AMP to test gate/boost/cab, or use Global bypass. Return to 48 kHz and wait for the worker to prepare the model. Exercise buffers 16–2048 plus irregular sizes, reset/restart, offline render and repeated insert/remove/editor reopen. Short silence after reset is an acknowledged limitation. Record results in VALIDATION.md; synthetic tests do not prove guitar tone quality or glitch-free host performance.
+Check 1→1, 1→2 and 2→2 routing, buffers 16–2048, repeated editor opening, reset and rate changes. Compare two offline bounces sample-for-sample. Global bypass returns dry audio delayed by the reported conversion latency: 127 samples at 44.1 kHz, 0 at 48 kHz, 186 at 88.2 kHz, 196 at 96 kHz. Account for host delay compensation when null-testing. Unsupported rates leave an enabled NAM silent with an explicit status.
+
+Record palm-muted low notes, fast riffs, sustained notes, chords and double-tracked parts. Level-match against a reference if available. The user's supplied DI was accepted as usable, but this is not exhaustive musical validation for all instruments/interfaces.
 
 ## Assets and packaging
 
-Configuration verifies every manifest SHA-256. The build copies `assets/` into **both** native bundle Resources directories. Keep these directories intact. Do not substitute arbitrary `.nam` files: this development build accepts only the audited bundled model hash. NAM Core and Eigen are fetched at pinned commits during development, not by end users. The plugin works offline after installation.
+Configuration and post-build bundle verification check every manifest SHA-256. The build copies `assets/` into **both** native bundle Resources directories. Keep these directories intact. Do not substitute arbitrary `.nam` files: this development build accepts only the two audited registry model hashes. NAM Core and Eigen are fetched at pinned commits during development, not by end users. The plugin works offline after installation.
 
 To reproduce timing output, run `build/scoria_dsp_tests /absolute/path/to/assets` (Windows: `build/Release/scoria_dsp_tests.exe`). This is an offline synthetic-input benchmark, not a live DAW callback guarantee. Debug/sanitizer runs are unsuitable for production CPU estimates.
+
+The developer-only `scoria_render_test` accepts asset directory, raw mono float64 input, raw mono float32 output and sample rate. It prepares assets before rendering, strips declared latency and never ships in plugin packages. Do not commit private DI audio. `scoria_completion_tests` prints full-chain timings at all supported rates.

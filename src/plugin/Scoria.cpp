@@ -8,21 +8,28 @@
 using namespace iplug;
 using namespace igraphics;
 
-Scoria::Scoria(const InstanceInfo &info) : Plugin(info, MakeConfig(scoria::ParameterCount, 1)) {
+Scoria::Scoria(const InstanceInfo &info) : Plugin(info, MakeConfig(scoria::ParameterCount, 2)) {
   for (int i = 0; i < scoria::ParameterCount; ++i) {
     const auto &d = scoria::kDefinitions[i];
     if (i == scoria::CabinetSelection)
       GetParam(i)->InitEnum(d.name, 1, 2, "", IParam::kFlagsNone, "", "None (dry)",
                             "Jester Cookie Monster");
+    else if (i == scoria::ModelSelection)
+      GetParam(i)->InitEnum(d.name, 1, 2, "", IParam::kFlagsNone, "",
+                            "RiffSmith (legacy, includes cab)", "Lum Herbert 4 (amp only)");
     else if (d.maximum == 1. && d.step == 1.)
       GetParam(i)->InitBool(d.name, d.initial > .5);
     else
       GetParam(i)->InitDouble(d.name, d.initial, d.minimum, d.maximum, d.step, d.unit);
   }
-  GetParam(scoria::GateEnabled)->Set(1.);
-  GetParam(scoria::OverdriveEnabled)->Set(1.);
-  GetParam(scoria::AmpEnabled)->Set(1.);
-  MakeDefaultPreset("Development - Distortion rig (48 kHz)", 1);
+  for (int preset = 0; preset < 2; ++preset) {
+    presetId_.store(preset == 0 ? 1 : 0);
+    const auto values = scoria::factoryValues(preset == 0);
+    for (int i = 0; i < scoria::ParameterCount; ++i)
+      GetParam(i)->Set(values[i]);
+    MakeDefaultPreset(preset == 0 ? "Tight Rhythm" : "Legacy development rig", 1);
+  }
+  RestorePreset(0);
   WDL_String resourcePath;
 #ifdef OS_WIN
   BundleResourcePath(resourcePath, gHINSTANCE);
@@ -43,11 +50,10 @@ Scoria::Scoria(const InstanceInfo &info) : Plugin(info, MakeConfig(scoria::Param
     g->LoadFont("Roboto-Regular", "Arial", ETextStyle::Normal);
     const auto labelStyle = DEFAULT_STYLE.WithLabelText(IText(16, COLOR_WHITE));
     const auto sliderStyle = labelStyle.WithValueText(IText(14, COLOR_WHITE));
-    g->AttachControl(new ITextControl(IRECT(20, 10, 780, 50), "TalosDSP Scoria | 0.0.2",
+    g->AttachControl(new ITextControl(IRECT(20, 10, 780, 50), "TalosDSP Scoria | 0.0.3",
                                       IText(26, COLOR_WHITE)));
-    g->AttachControl(new ITextControl(IRECT(20, 60, 780, 95),
-                                      "Preset: Development rig | 48 kHz | Tight Rhythm unavailable",
-                                      IText(16, COLOR_WHITE)));
+    g->AttachControl(
+        new IVBakedPresetManagerControl(IRECT(20, 55, 780, 95), "Factory preset", labelStyle), 901);
     g->AttachControl(new IVSliderControl(IRECT(20, 105, 310, 180), scoria::InputGain, "Input trim",
                                          sliderStyle, true, EDirection::Horizontal));
     g->AttachControl(new IVSliderControl(IRECT(330, 105, 620, 180), scoria::OutputGain,
@@ -81,20 +87,22 @@ Scoria::Scoria(const InstanceInfo &info) : Plugin(info, MakeConfig(scoria::Param
     slider(0, scoria::OverdriveTone, 385, 330, 180);
     slider(0, scoria::OverdriveLevel, 585, 330, 185);
     label(0, 420, "Phaser / Chorus: unavailable | Octaver: deferred");
-    label(1, 250, "Distortion: RiffSmith Distorted by Matt Hartman (includes cabinet)");
+    label(1, 250, "Distortion: audited high-gain NAM captures");
     toggle(1, scoria::AmpEnabled, 25, 295);
     slider(1, scoria::AmpInput, 185, 295, 270);
     slider(1, scoria::AmpOutput, 475, 295, 295);
-    label(1, 380, "Scoria trim controls; not captured amplifier knob positions.");
-    label(1, 420, "Crunch / Clean: unavailable. NAM requires a 48 kHz session.");
+    attach(new IVMenuButtonControl(IRECT(25, 365, 770, 410), scoria::ModelSelection,
+                                   "NAM model (Scoria trims above)", labelStyle),
+           1);
+    label(1, 420, "Crunch / Clean: unavailable. Trims do not reproduce hardware knobs.");
     label(2, 250, "IR: Jester Cookie Monster | BG412S 4x12 / Vintage 30 / SM57");
     toggle(2, scoria::CabinetEnabled, 25, 295);
     slider(2, scoria::CabinetOutput, 475, 295, 295);
     attach(new IVMenuButtonControl(IRECT(185, 300, 455, 355), scoria::CabinetSelection,
                                    "Cabinet IR", labelStyle),
            2);
-    label(2, 380, "Separate cab defaults OFF: the bundled NAM already includes a cab.");
-    label(2, 420, "Enabling this IR intentionally applies additional cabinet coloration.");
+    label(2, 380, "Tight Rhythm: amp-only capture + cabinet ON.");
+    label(2, 420, "Legacy RiffSmith includes a cab: leave separate cabinet OFF.");
     label(3, 265, "Stereo delay: NOT IMPLEMENTED");
     label(3, 315, "Stereo reverb: NOT IMPLEMENTED");
     g->AttachControl(new IVTabSwitchControl(
@@ -116,16 +124,31 @@ Scoria::Scoria(const InstanceInfo &info) : Plugin(info, MakeConfig(scoria::Param
 
 void Scoria::OnIdle() {
 #if IPLUG_EDITOR
-  if (auto *g = GetUI())
+  if (auto *g = GetUI()) {
+    if (auto *selector = dynamic_cast<IVBakedPresetManagerControl *>(g->GetControlWithTag(901))) {
+      const auto factory = scoria::factoryValues(presetId_.load() == 1);
+      bool modified = false;
+      for (int i = 0; i < scoria::ParameterCount; ++i)
+        modified |= GetParam(i)->Value() != factory[i];
+      const std::string title =
+          std::string(presetId_.load() == 1 ? "Tight Rhythm" : "Legacy development rig") +
+          (modified ? " (modified)" : "");
+      selector->ForAllChildrenFunc([&](int index, IControl *control) {
+        if (index == 2)
+          if (auto *button = dynamic_cast<IVButtonControl *>(control))
+            button->SetLabelStr(title.c_str());
+      });
+    }
     if (auto *label = dynamic_cast<ITextControl *>(g->GetControlWithTag(900))) {
       const char *messages[] = {
           "Preparing assets: enabled amp is silent until ready",
-          "Development rig ready | zero added latency | listening validation pending",
-          "Unsupported NAM rate: use 48 kHz; global bypass remains dry",
+          "Assets ready | Distortion / cabinet | 44.1 / 48 / 88.2 / 96 kHz",
+          "Unsupported rate: use 44.1 / 48 / 88.2 / 96 kHz",
           "Asset loading failed: missing or unreadable bundled asset; reinstall complete "
           "bundle"};
       label->SetStr(messages[assets_->status()]);
     }
+  }
 #endif
 }
 scoria::Parameters Scoria::parameters() const {
@@ -136,13 +159,15 @@ scoria::Parameters Scoria::parameters() const {
 }
 bool Scoria::SerializeState(IByteChunk &chunk) const {
   // Stable asset IDs and development preset ID, independent of installation paths.
-  const std::uint32_t model = 0x52464431, cabinet = 0x4a434d31, preset = 0;
+  const std::uint32_t model = scoria::kModels[GetParam(scoria::ModelSelection)->Int()].id,
+                      cabinet = scoria::kCabinetId, preset = presetId_.load();
   return chunk.Put(&scoria::kStateVersion) > 0 && chunk.Put(&model) > 0 &&
          chunk.Put(&cabinet) > 0 && chunk.Put(&preset) > 0 && SerializeParams(chunk);
 }
 int Scoria::UnserializeState(const IByteChunk &chunk, int startPos) {
   std::array<double, scoria::ParameterCount> values{};
-  const int cursor = scoria::decodeState(chunk.GetData(), chunk.Size(), startPos, values);
+  std::uint32_t preset = 0;
+  const int cursor = scoria::decodeState(chunk.GetData(), chunk.Size(), startPos, values, &preset);
   if (cursor < 0)
     return -1;
   IByteChunk validated;
@@ -150,16 +175,24 @@ int Scoria::UnserializeState(const IByteChunk &chunk, int startPos) {
     validated.Put(&value);
   if (UnserializeParams(validated, 0) < 0)
     return -1;
+  presetId_.store(preset);
+  SetCurrentPresetIdx(preset == 1 ? 0 : 1);
   return cursor;
 }
 #if IPLUG_DSP
 void Scoria::OnReset() {
   engine_.reset(GetSampleRate(), parameters());
-  assets_->request(GetSampleRate());
+  SetLatency(scoria::inferenceLatency(GetSampleRate()));
+  assets_->request(GetSampleRate(), parameters().modelIndex, true);
+  if (GetRenderingOffline()) {
+    assets_->waitForPreparation();
+    engine_.setAssets(assets_->poll());
+  }
 }
 void Scoria::ProcessBlock(sample **inputs, sample **outputs, int nFrames) {
+  const auto p = parameters();
+  assets_->request(GetSampleRate(), p.modelIndex);
   engine_.setAssets(assets_->poll());
-  engine_.process(inputs, NInChansConnected(), outputs, NOutChansConnected(), nFrames,
-                  parameters());
+  engine_.process(inputs, NInChansConnected(), outputs, NOutChansConnected(), nFrames, p);
 }
 #endif

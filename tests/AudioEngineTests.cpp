@@ -27,9 +27,14 @@ template <typename Sample> void test() {
                                   ? 1.
                                   : std::pow(10., (parameters.inputDb + parameters.outputDb) / 20.);
           for (int i = 0; i < size; ++i) {
-            require(std::abs(outLeft[i] - 0.125 * gain) < 1e-6, "left gain/pass-through/bypass");
+            require(std::abs(outLeft[i] -
+                             (i < scoria::inferenceLatency(rate) ? 0. : 0.125 * gain)) < 1e-6,
+                    "left gain/pass-through/bypass");
             if (layout[1] == 2)
-              require(std::abs(outRight[i] - (layout[0] == 1 ? 0.125 : -0.25) * gain) < 1e-6,
+              require(std::abs(outRight[i] - (i < scoria::inferenceLatency(rate)
+                                                  ? 0.
+                                                  : (layout[0] == 1 ? 0.125 : -0.25) * gain)) <
+                          1e-6,
                       "channel routing");
           }
         }
@@ -38,7 +43,10 @@ template <typename Sample> void test() {
         engine.reset(rate, {6., 0., false});
         engine.process(in, layout[0], inplace, layout[1], size, {6., 0., false});
         for (int i = 0; i < size; ++i)
-          require(std::abs(left[i] - 0.125 * std::pow(10., 6. / 20.)) < 1e-6, "in-place gain");
+          require(std::abs(left[i] - (i < scoria::inferenceLatency(rate)
+                                          ? 0.
+                                          : 0.125 * std::pow(10., 6. / 20.))) < 1e-6,
+                  "in-place gain");
       }
     }
     scoria::AudioEngine engine;
@@ -46,6 +54,8 @@ template <typename Sample> void test() {
     Sample input = 1, output = 0;
     const Sample *in[] = {&input};
     Sample *out[] = {&output};
+    for (int i = 0; i < scoria::inferenceLatency(rate); ++i)
+      engine.process(in, 1, out, 1, 1, {});
     double previous = 1.;
     for (int i = 0; i < 2000; ++i) {
       engine.process(in, 1, out, 1, 1, {6., 0., false});
@@ -58,6 +68,7 @@ template <typename Sample> void test() {
     for (auto invalid :
          {std::numeric_limits<Sample>::quiet_NaN(), std::numeric_limits<Sample>::infinity(),
           std::numeric_limits<Sample>::denorm_min()}) {
+      engine.reset(rate);
       input = invalid;
       engine.process(in, 1, out, 1, 1, {});
       require(output == 0, "invalid/denormal input sanitized");

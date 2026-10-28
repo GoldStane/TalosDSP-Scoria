@@ -19,6 +19,7 @@ public:
 #endif
 private:
   scoria::Parameters parameters() const;
+  std::atomic<std::uint32_t> presetId_{1};
   scoria::AudioEngine engine_;
   std::unique_ptr<scoria::AssetLoader> assets_;
 };

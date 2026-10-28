@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
   check(invalidWav, "invalid WAV rejected");
   std::filesystem::remove(invalid);
   check(!nam.load("/missing/scoria.nam", 48000., error), "missing NAM rejected");
-  check(!nam.load(model, 44100., error), "wrong NAM rate rejected");
+  check(!nam.load(model, 32000., error), "wrong NAM rate rejected");
   if (!nam.load(model, 48000., error)) {
     std::cerr << error << '\n';
     return 1;
@@ -247,7 +247,7 @@ int main(int argc, char **argv) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     check(assets && assets->rate == rate, "worker reset handoff");
-    check(assets->amplifier.ready() == (rate == 48000.), "unsupported NAM rate explicit");
+    check(assets->amplifier.ready(), "unsupported NAM rate explicit");
   }
   auto *retained = loader.poll();
   loader.request(48000.);

@@ -30,3 +30,9 @@ The broad iPlug2 checkout includes optional software which is not selected by Sc
 Arial is requested from the operating system, not redistributed. No commercial plugin artwork, copyrighted music or guitar recordings are bundled. Test audio consists of original synthetic signals and the licensed assets above. Scoria's SHA-256 and DSP implementations are original code; no proprietary pedal implementation is copied.
 
 CI packages include LICENSE.md, THIRD_PARTY_NOTICES.md and complete plugin bundles with asset licenses. macOS packages remain unsigned/not notarized. Retain the Eigen source availability notice when redistributing binaries.
+
+## M1 amp-only capture
+
+Lum Herbert 4 comes from `guitarlum/VoLum` at commit `ddb7822ce06df9eaa74156027cf175a9ffe8305a`, `rigs/Diezel Herbert Mk1/AMP-Herb-4.nam`. The author's repository-wide MIT grant permits redistribution; its README credits amp profiles to Lum, and the guide identifies AMP/No Cab captures as amp-only. No separate permission email is claimed. The exact primary-source evidence and license are preserved in `assets/licenses/VoLum-permission.md` and `VoLum-MIT.txt`. The unchanged model hash and architecture are in the manifest. This asset grant is distinct from NAM Core's license. Existing RiffSmith and Jester permissions remain unchanged.
+
+The new polyphase converter is original Scoria code (MIT), with no added resampling dependency. Private DI used for local testing is not distributed.

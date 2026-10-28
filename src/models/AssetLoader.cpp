@@ -1,10 +1,10 @@
 #include "AssetLoader.h"
 #include "dsp/WavImpulse.h"
 #include <chrono>
+#include <filesystem>
 namespace scoria {
 static_assert(std::atomic<ProcessingAssets *>::is_always_lock_free &&
-                  std::atomic<unsigned>::is_always_lock_free &&
-                  std::atomic<double>::is_always_lock_free,
+                  std::atomic<std::uint64_t>::is_always_lock_free,
               "Audio handoff must be lock-free");
 AssetLoader::AssetLoader(std::string model, std::string impulse)
     : model_(std::move(model)), impulse_(std::move(impulse)), worker_([this] { work(); }) {}
@@ -15,15 +15,27 @@ AssetLoader::~AssetLoader() {
   delete pending_.exchange(nullptr);
   delete retired_.exchange(nullptr);
 }
-void AssetLoader::request(double rate) noexcept {
-  // Do not restart preparation for an unchanged rate that is already loading or ready.
-  if (rate == rate_.load() && (status_.load() == Loading || status_.load() == Ready))
-    return;
-  // Publish Loading before the generation so a fast worker cannot finish first and then be
-  // overwritten with a stale status.
+void AssetLoader::request(double rate, int modelIndex, bool force) noexcept {
+  constexpr std::uint64_t mask = (std::uint64_t(1) << 33) - 1;
+  const auto configuration =
+      (std::uint64_t(modelIndex == 1 ? 1 : 0) << 32) |
+      std::uint32_t(std::isfinite(rate) && rate > 0 && rate < 200000 ? rate : 0);
+  auto previous = request_.load();
+  do {
+    if (!force && (previous & mask) == configuration)
+      return;
+  } while (!request_.compare_exchange_weak(
+      previous, ((previous & ~mask) + (std::uint64_t(1) << 33)) | configuration));
   status_.store(Loading);
-  rate_.store(rate);
-  generation_.fetch_add(1);
+}
+bool AssetLoader::waitForPreparation() noexcept {
+  const auto requested = request_.load();
+  for (int attempt = 0; attempt < 10000; ++attempt) {
+    if (completed_.load() == requested)
+      return status() == Ready;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  return false;
 }
 ProcessingAssets *AssetLoader::poll() noexcept {
   if (!retired_.load()) {
@@ -33,31 +45,47 @@ ProcessingAssets *AssetLoader::poll() noexcept {
       retired_.store(old);
     }
   }
-  return active_ && active_->generation == generation_.load() ? active_ : nullptr;
+  return active_ && active_->generation == request_.load() ? active_ : nullptr;
 }
 void AssetLoader::work() {
-  unsigned prepared = 0;
+  std::uint64_t prepared = ~std::uint64_t(0);
   while (!stop_.load()) {
     delete retired_.exchange(nullptr);
-    const unsigned generation = generation_.load();
+    const auto generation = request_.load();
     if (generation != prepared) {
-      auto next = std::make_unique<ProcessingAssets>();
-      next->generation = generation;
-      next->rate = rate_.load();
-      std::string error;
-      bool cab = false;
       try {
-        const auto ir = loadImpulse(impulse_, next->rate);
-        for (auto &c : next->cabinets)
-          c.prepare(ir);
-        cab = true;
+        auto next = std::make_unique<ProcessingAssets>();
+        next->generation = generation;
+        const auto request = generation;
+        next->rate = double(std::uint32_t(request));
+        next->modelIndex = int((request >> 32) & 1);
+        std::string error;
+        bool cab = false;
+        try {
+          const auto ir = loadImpulse(impulse_, next->rate);
+          for (auto &c : next->cabinets)
+            c.prepare(ir);
+          cab = true;
+        } catch (...) {
+        }
+        const auto path = next->modelIndex == 0 ? std::filesystem::u8path(model_)
+                                                : std::filesystem::u8path(model_).parent_path() /
+                                                      kModels[next->modelIndex].file;
+        const bool amp = next->amplifier.load(path.u8string(), next->rate, error);
+        if (generation == request_.load()) {
+          status_.store(amp && cab                   ? Ready
+                        : !supportedRate(next->rate) ? UnsupportedRate
+                                                     : MissingAsset);
+          delete pending_.exchange(next.release());
+          prepared = generation;
+          completed_.store(generation);
+        }
       } catch (...) {
-      }
-      const bool amp = next->amplifier.load(model_, next->rate, error);
-      if (generation == generation_.load()) {
-        status_.store(amp && cab ? Ready : next->rate != 48000. ? UnsupportedRate : MissingAsset);
-        delete pending_.exchange(next.release());
-        prepared = generation;
+        if (generation == request_.load()) {
+          status_.store(MissingAsset);
+          prepared = generation;
+          completed_.store(generation);
+        }
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(5));

@@ -1,3 +1,40 @@
+# Validation — 0.0.3 M1 acceptance candidate
+
+## Current completion pass (2026-10-28)
+
+Baseline `19fecf7` was clean and GitHub native run `40573164711` passed Windows/macOS. That result predates these changes. New native CI status is pending until recorded below.
+
+Local Apple M4 / macOS 26.7.1 / AppleClang 21 Release Universal VST3 and AU builds pass. Four CTest tests pass: completion/registry/resampling/state fixtures, original core regressions, DSP/assets, and actual AU host integration. ASan+UBSan portable tests passed 3/3 (83.01 seconds) before the final lifecycle adjustment; final sanitizer status must be recorded separately. C++ allocation counters cover adapted NAM and the complete pipeline; Debug additionally rejects Eigen allocations.
+
+`pluginval` 1.0.4 strictness 5 passed VST3 scanning, editor, processing at 44.1/48/96 kHz and buffers 64–1024, state and automation. Apple `auval -v aufx Scor TlDs` passed the installed AU. Repeat after final lifecycle changes.
+
+Polyphase impulse peaks exactly match declared latency (127/0/186/196 samples at 44.1/48/88.2/96 kHz). A 1 kHz roundtrip sine has maximum absolute error below 4.2e-7. NAM renders match across 17-frame and 256-frame internal boundaries. These checks do not substitute for a full converter spectral audit.
+
+Offline full stereo chain, Herbert full WaveNet, 256 frames, 100 timed blocks, Release arm64: 44.1 kHz mean 1181.86 / p99 1270.96 / max 1324.50 µs; 48 kHz 1110.61 / 1139.04 / 1149.08 µs; 88.2 kHz 1800.41 / 1864.00 / 1868.71 µs; 96 kHz 1923.22 / 2013.58 / 2019.25 µs. An earlier run while a native build was active reached 11536.2 µs at 44.1 kHz. Neither run establishes glitch-free live performance; direct FIR cost is significant at 96 kHz. No FFT rewrite was made.
+
+The user supplied a private 19.349-second, mono 24-bit/44.1 kHz guitar DI for local testing. It is not committed. The full offline pipeline rendered 853304 frames after latency compensation, peak 0.352955 (about −9.05 dBFS), RMS 0.0574685. The user listened and reported **“Usable rhythm tone; continue validation.”** This is user musical feedback on one recording, not an agent claim to have heard the audio or an exhaustive pickup/tuning comparison.
+
+REAPER 7.34 arm64 loaded the updated VST3, recalled the legacy model and +12 dB NAM trim from an existing project, and successfully selected Tight Rhythm (new model, cabinet on, output −12 dB). Validation uses a separate `/tmp` project; the original project and recording are untouched. Real v2/v3 state payloads containing only IDs/numeric parameters are committed as fixtures. An initial repeated fast bounce exposed variable startup silence while assets prepared. The fix prepares on the worker and waits only during offline lifecycle setup; never in ProcessBlock. Final repeat-render verification remains required below.
+
+Exact commands used:
+
+```sh
+cmake --build build-m1-native --parallel 4
+ctest --test-dir build-m1-native --output-on-failure
+cmake --build build-m1-sanitize --parallel 4
+ctest --test-dir build-m1-sanitize --output-on-failure
+build-m1-native/scoria_completion_tests assets
+build-m1/scoria_render_test assets /tmp/scoria-di.f64 /tmp/scoria-tight.f32 44100
+pluginval --strictness-level 5 --validate /absolute/path/build-m1-native/out/Scoria.vst3
+auval -v aufx Scor TlDs
+```
+
+The AU test/validators require access to macOS services outside the execution sandbox. Sandbox registration failure was rerun successfully outside it.
+
+Remaining: final offline repeat-render regression, updated native Windows/macOS CI, final sanitizer/validator rerun, broader live buffer/rate/automation and multiple-instance listening matrix. Live model changes are not gapless; initial async preparation remains visible. Signing/notarization and physical Windows host listening are not claimed.
+
+## Historical 0.0.2 validation (superseded limitations)
+
 # Validation record — M1 development
 
 M1 acceptance is **not complete**. The default is an explicitly labeled development rig, not Tight Rhythm. The licensed model includes a cabinet; an amp-only capture and real guitar listening/tuning remain necessary. Native CI run `40572630277` passed for commit `ec1f078` on Windows x64 and macOS Universal; manual REAPER acceptance and listening remain unverified.

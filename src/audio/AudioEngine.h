@@ -2,13 +2,19 @@
 #include "Parameters.h"
 #include "dsp/NoiseGate.h"
 #include "dsp/Overdrive.h"
+#include "dsp/Resampler.h"
 #include "models/AssetLoader.h"
+#include "models/ModelRegistry.h"
 #include <array>
 namespace scoria {
 class AudioEngine {
 public:
   void reset(double sampleRate, Parameters p = {}) noexcept {
-    rate_ = bounded(sampleRate, 8000., 96000., 48000.);
+    rate_ = bounded(sampleRate, 8000., 384000., 48000.);
+    for (auto &d : dryDelay_)
+      d.reset(inferenceLatency(rate_));
+    for (auto &d : ampDelay_)
+      d.reset(inferenceLatency(rate_));
     availability_[0].reset(0., rate_);
     availability_[1].reset(0., rate_);
     for (auto &gate : gates_)
@@ -39,7 +45,8 @@ public:
       controls_[i].set(values[i]);
     for (auto &gate : gates_)
       gate.configure(p.thresholdDb, p.releaseMs);
-    const bool ampReady = assets_ && assets_->rate == rate_ && assets_->amplifier.ready();
+    const bool ampReady = assets_ && assets_->rate == rate_ &&
+                          assets_->modelIndex == p.modelIndex && assets_->amplifier.ready();
     const bool cabReady = assets_ && assets_->rate == rate_ && assets_->cabinets[0].ready();
     availability_[0].set(ampReady ? 1. : 0.);
     availability_[1].set(cabReady ? 1. : 0.);
@@ -60,7 +67,8 @@ public:
           const double driven = drives_[c].process(x, modulation_[Drive][i], modulation_[Tone][i],
                                                    modulation_[Level][i]);
           x += (driven - x) * modulation_[OD][i];
-          preAmp_[c][i] = x;
+          preAmp_[c][i] = ampDelay_[c].process(x);
+          dry_[c][i] = dryDelay_[c].process(dry_[c][i]);
           wet_[c][i] = x * modulation_[AmpIn][i];
         }
       }
@@ -123,6 +131,7 @@ private:
   double rate_ = 48000.;
   ProcessingAssets *assets_ = nullptr;
   Ramp availability_[2];
+  SampleDelay dryDelay_[2], ampDelay_[2];
   NoiseGate gates_[2];
   Overdrive drives_[2];
   std::array<Ramp, Count> controls_;

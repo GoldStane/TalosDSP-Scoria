@@ -80,10 +80,13 @@ int main(int argc, char **argv) {
       status(AudioUnitGetProperty(unit, kAudioUnitProperty_Latency, kAudioUnitScope_Global, 0,
                                   &latency, &latencyBytes),
              "latency property");
-      check(latency == 0., "zero reported latency");
+      check(std::abs(latency -
+                     (rate == 48000. ? 0. : (4 + std::ceil(64 + 64 * rate / 48000.)) / rate)) <
+                1e-9,
+            "reported conversion latency");
       status(AudioUnitSetParameter(unit, 0, kAudioUnitScope_Global, 0, -12., 0),
              "change before preset recall");
-      AUPreset preset{0, CFSTR("Development - Distortion rig (48 kHz)")};
+      AUPreset preset{0, CFSTR("Tight Rhythm")};
       status(AudioUnitSetProperty(unit, kAudioUnitProperty_PresentPreset, kAudioUnitScope_Global, 0,
                                   &preset, sizeof(preset)),
              "factory preset recall");
@@ -96,8 +99,8 @@ int main(int argc, char **argv) {
       for (UInt32 id : {3u, 6u, 10u, 13u})
         status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, 0., 0),
                "disable stages for M0 regression");
-      const std::array<float, 16> expected{
-          {6, -3, 0, 0, -47, 173, 0, 23, 61, 9, 0, 2, -4, 0, 1, -2}};
+      const std::array<float, 17> expected{
+          {6, -3, 0, 0, -47, 173, 0, 23, 61, 9, 0, 2, -4, 0, 1, -2, 1}};
       for (UInt32 id = 0; id < expected.size(); ++id)
         status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, expected[id], 0),
                "set M1 parameters");
@@ -173,7 +176,7 @@ int main(int argc, char **argv) {
                              reinterpret_cast<AudioBufferList *>(&buffers)),
              "render bypass");
       check(left.back() == 0.125f, "AU bypass dry");
-      if (rate == 48000.) {
+      {
         testTone = true;
         for (UInt32 id : {0u, 1u, 2u, 11u, 12u})
           status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, 0., 0),

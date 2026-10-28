@@ -2,6 +2,7 @@ iplug_add_plugin(Scoria
   SOURCES Scoria.cpp Scoria.h config.h
   FORMATS VST3 AU
   LINK scoria_core)
+include("${PROJECT_SOURCE_DIR}/cmake/VstLifecyclePatch.cmake")
 if(APPLE)
   include("${PROJECT_SOURCE_DIR}/cmake/AuStatePatch.cmake")
 endif()
@@ -19,6 +20,7 @@ foreach(format vst3 au)
       set(resource_dir "${CMAKE_BINARY_DIR}/out/Scoria.vst3/Contents/Resources")
     endif()
     add_custom_command(TARGET Scoria-${format} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/assets" "${resource_dir}/assets")
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/assets" "${resource_dir}/assets"
+      COMMAND ${CMAKE_COMMAND} "-DSCORIA_ASSET_ROOT=${resource_dir}/assets" -P "${PROJECT_SOURCE_DIR}/cmake/Assets.cmake")
   endif()
 endforeach()
