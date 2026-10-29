@@ -25,7 +25,9 @@ public:
   bool waitForPreparation() noexcept;
   ProcessingAssets *poll() noexcept;
   enum Status { Loading, Ready, UnsupportedRate, MissingAsset };
-  Status status() const noexcept { return static_cast<Status>(status_.load()); }
+  Status status() const noexcept {
+    return completed_.load() == request_.load() ? static_cast<Status>(status_.load()) : Loading;
+  }
 
 private:
   void work();

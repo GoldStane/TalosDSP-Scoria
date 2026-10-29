@@ -17,16 +17,14 @@ AssetLoader::~AssetLoader() {
 }
 void AssetLoader::request(double rate, int modelIndex, bool force) noexcept {
   constexpr std::uint64_t mask = (std::uint64_t(1) << 33) - 1;
-  const auto configuration =
-      (std::uint64_t(modelIndex == 1 ? 1 : 0) << 32) |
-      std::uint32_t(std::isfinite(rate) && rate > 0 && rate < 200000 ? rate : 0);
+  const auto configuration = (std::uint64_t(modelIndex == 1 ? 1 : 0) << 32) |
+                             std::uint32_t(supportedRate(rate) ? rate : 0);
   auto previous = request_.load();
   do {
     if (!force && (previous & mask) == configuration)
       return;
   } while (!request_.compare_exchange_weak(
       previous, ((previous & ~mask) + (std::uint64_t(1) << 33)) | configuration));
-  status_.store(Loading);
 }
 bool AssetLoader::waitForPreparation() noexcept {
   const auto requested = request_.load();

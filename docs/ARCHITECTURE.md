@@ -16,7 +16,7 @@ Input and output trims have independent ramps on opposite sides of the nonlinear
 
 Tight Rhythm enables the amp-only Herbert capture and Jester Cookie Monster IR. The legacy RiffSmith capture includes a cabinet, so its preset disables the separate IR. State restoration preserves explicit user choices, including intentional double-cab processing; the CAB page warns about the legacy capture.
 
-`WavImpulse` decodes mono little-endian PCM16/24/32 or float32 RIFF WAV off-thread. It rejects invalid/truncated/nonfinite/unsupported inputs. IR preparation uses a 65-point windowed-sinc resampler when rates differ, with impulse-area scaling. It keeps the first 42.67 ms (maximum 4096 taps) and fades the last 128 taps to omit the long room tail. No peak normalization occurs. `Cabinet` uses a preallocated circular history and direct convolution. This is intentionally simple and zero-buffer-latency; benchmark costs before increasing IR length.
+`WavImpulse` decodes mono little-endian PCM16/24/32 or float32 RIFF WAV off-thread. It rejects invalid/truncated/nonfinite/unsupported inputs. IR preparation uses a 65-point windowed-sinc resampler when rates differ, with impulse-area scaling. It keeps the first 42.67 ms (maximum 4096 taps) and fades the last 128 taps to omit the long room tail. No peak normalization occurs. `Cabinet` uses a preallocated mirrored circular history and a contiguous direct convolution with four accumulators. This remains zero-buffer-latency. Mirroring removes a per-tap wrap branch and shortens accumulator dependency chains; reference tests cover 1–4096 taps. It reduces measured full-chain CPU cost without adding FFT scheduling or changing IR preparation.
 
 ## Ownership and real-time contract
 

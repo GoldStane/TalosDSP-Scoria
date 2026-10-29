@@ -54,6 +54,37 @@ int main(int argc, char **argv) {
     require(values == scoria::factoryValues(true) && preset == 1,
             "Tight Rhythm exact saved-state recall");
   }
+  {
+    scoria::Resampler down;
+    down.prepare(96000, 48000);
+    double energy = 0.;
+    int count = 0;
+    for (int i = 0; i < 96000; ++i)
+      down.push(std::sin(6.283185307179586 * 30000 * i / 96000.), [&](double value) {
+        if (i > 1000) {
+          energy += value * value;
+          ++count;
+        }
+      });
+    const double rms = std::sqrt(energy / count);
+    std::cout << "96->48 kHz 30 kHz rejection rms=" << rms << '\n';
+    require(rms < .0001, "resampler anti-alias stopband rejection");
+  }
+  for (size_t length : {size_t(1), size_t(2048), size_t(4096)}) {
+    std::vector<double> taps(length), signal(5000);
+    for (size_t k = 0; k < length; ++k)
+      taps[k] = .01 * std::cos(k * .23) * std::exp(-double(k) / 1000.);
+    scoria::Cabinet cabinet;
+    cabinet.prepare(taps);
+    for (size_t n = 0; n < signal.size(); ++n) {
+      signal[n] = .2 * std::sin(n * .17);
+      double reference = 0.;
+      for (size_t k = 0; k < length && k <= n; ++k)
+        reference += taps[k] * signal[n - k];
+      require(std::abs(cabinet.process(signal[n]) - reference) < 1e-12,
+              "mirrored FIR matches full reference across wraps");
+    }
+  }
   for (double rate : {44100., 48000., 88200., 96000.}) {
     {
       scoria::AudioEngine bypass;

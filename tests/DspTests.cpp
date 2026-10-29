@@ -249,6 +249,18 @@ int main(int argc, char **argv) {
     check(assets && assets->rate == rate, "worker reset handoff");
     check(assets->amplifier.ready(), "unsupported NAM rate explicit");
   }
+  loader.request(48000., 1, true);
+  check(loader.waitForPreparation(), "offline lifecycle prepares before rendering");
+  auto *fresh = loader.poll();
+  check(fresh && fresh->modelIndex == 1 && fresh->amplifier.ready(), "new model worker handoff");
+  loader.request(44100.5, 1);
+  check(!loader.waitForPreparation() && loader.status() == scoria::AssetLoader::UnsupportedRate,
+        "fractional unsupported rates never masquerade as ready");
+  loader.request(48000.);
+  check(loader.waitForPreparation(), "return to supported legacy model");
+  // Retirement may still be occupied until the next worker polling iteration.
+  for (int i = 0; i < 100 && !loader.poll(); ++i)
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   auto *retained = loader.poll();
   loader.request(48000.);
   check(retained && loader.poll() == retained, "unchanged-rate request keeps prepared assets");

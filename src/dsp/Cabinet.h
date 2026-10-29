@@ -13,7 +13,7 @@ public:
       if (!std::isfinite(x))
         throw std::runtime_error("Nonfinite IR");
     taps_ = impulse;
-    history_.assign(taps_.size(), 0.);
+    history_.assign(taps_.size() * 2, 0.);
     position_ = 0;
   }
   void reset() noexcept {
@@ -24,15 +24,23 @@ public:
   double process(double x) noexcept {
     if (!ready())
       return x;
-    history_[position_] = x;
-    double sum = 0.;
-    size_t index = position_;
-    for (double tap : taps_) {
-      sum += tap * history_[index];
-      index = index ? index - 1 : taps_.size() - 1;
+    // Mirrored history makes the dot product contiguous without a wrap branch
+    // per tap. Four independent accumulators reduce the dependency chain.
+    const size_t count = taps_.size();
+    history_[position_] = history_[position_ + count] = x;
+    const double *history = history_.data() + position_;
+    double a = 0., b = 0., c = 0., d = 0.;
+    size_t i = 0;
+    for (; i + 3 < count; i += 4) {
+      a += taps_[i] * history[i];
+      b += taps_[i + 1] * history[i + 1];
+      c += taps_[i + 2] * history[i + 2];
+      d += taps_[i + 3] * history[i + 3];
     }
-    if (++position_ == taps_.size())
-      position_ = 0;
+    double sum = (a + b) + (c + d);
+    for (; i < count; ++i)
+      sum += taps_[i] * history[i];
+    position_ = position_ ? position_ - 1 : count - 1;
     return finite(sum);
   }
 
