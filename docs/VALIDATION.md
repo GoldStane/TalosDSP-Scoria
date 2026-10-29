@@ -2,7 +2,7 @@
 
 ## Current completion pass (2026-10-28)
 
-Baseline `19fecf7` was clean and GitHub native run `40573164711` passed Windows/macOS. That result predates these changes. Completion commit `63eaa95` passed native run `40763626791`: Windows x64 VST3 and macOS Universal VST3/AU, CTest, AU validation and complete bundles with checksum verification. A subsequent FIR loop optimization requires its own CI result below.
+Baseline `19fecf7` was clean and GitHub native run `40573164711` passed Windows/macOS. That result predates these changes. Completion commit `63eaa95` passed native run `40763626791`: Windows x64 VST3 and macOS Universal VST3/AU, CTest, AU validation and complete bundles with checksum verification. Final code commit `8283288` passed run `40880652083` on both native runners, including the FIR optimization and asset-status fix.
 
 Local Apple M4 / macOS 26.7.1 / AppleClang 21 Release Universal VST3 and AU builds pass. Four CTest tests pass: completion/registry/resampling/state fixtures, original core regressions, DSP/assets, and actual AU host integration. ASan+UBSan portable tests passed 3/3 (83.01 seconds) before the final lifecycle adjustment; final sanitizer status must be recorded separately. C++ allocation counters cover adapted NAM and the complete pipeline; Debug additionally rejects Eigen allocations.
 
@@ -31,7 +31,7 @@ auval -v aufx Scor TlDs
 
 The AU test/validators require access to macOS services outside the execution sandbox. Sandbox registration failure was rerun successfully outside it.
 
-Remaining: final FIR optimization CI/sanitizer rerun, broader live buffer/rate/automation and multiple-instance listening matrix. Live model changes are not gapless; initial async preparation remains visible. Signing/notarization and physical Windows host listening are not claimed.
+Remaining: broader live buffer/rate/automation and multiple-instance listening matrix. Live model changes are not gapless; initial async preparation remains visible. Signing/notarization and physical Windows host listening are not claimed.
 
 ## Historical 0.0.2 validation (superseded limitations)
 
@@ -85,3 +85,15 @@ Run pluginval, REAPER editor/automation/session/offline-render checks, and level
 The lifecycle-corrected version passed pluginval strictness 5 again and ASan+UBSan 3/3 in 91.15 seconds. The converter's 96→48 kHz rejection test produces RMS 9.144e-7 for a unit-amplitude 30 kHz input (about −118 dB relative to the input RMS). This is a selected stopband measurement, not an exhaustive quality score.
 
 Profiling justified a small direct-FIR optimization, rather than FFT convolution: mirrored history and four accumulators. On the same Apple M4 Release full-stereo 256-frame test, 100 blocks: 44.1 kHz mean 722.455 / p99 1005.96 / max 1168.92 µs; 48 kHz 578.688 / 723.75 / 757.75 µs; 88.2 kHz 792.673 / 1020.04 / 1023.75 µs; 96 kHz 804.747 / 1029.08 / 1080.38 µs. Output peaks are unchanged to the printed precision. Scheduling noise remains; these are offline measurements, not guaranteed live deadlines.
+
+## Final code verification (2026-10-29)
+
+Commit `8283288d82b35225b5608836fe7a83b4609e91c5`, branch `codex/m1-completion`, passed [native CI run 40880652083](https://github.com/GoldStane/TalosDSP-Scoria/actions/runs/40880652083): Windows x64 VST3 and macOS Universal VST3/AU, all CTest checks, macOS auval, packaged assets and artifact publication. Local Universal slices verified with `lipo -archs`: x86_64 and arm64 for both bundles.
+
+Final local native suite: 4/4 passed, 3.78 seconds. Final ASan+UBSan portable suite: 3/3 passed, 77.96 seconds. Pluginval 1.0.4 strictness 5 passed the optimized VST3. Source and both packaged asset manifests passed SHA-256 verification. Formatting and `git diff --check` passed. The asset-status fix now derives readiness from the completed request token, avoiding a request/worker status-write race. Fractional unsupported sample rates are explicitly rejected.
+
+Delivered scope: self-contained amp-only Tight Rhythm, original legacy capture/state preservation, common-rate adaptation, gate/boost/cabinet, host-visible parameters and preset recall, actual REAPER DI rendering and user-approved tone. No required model, IR, sample-rate implementation or native build is missing.
+
+Full acceptance is not claimed for the entire requested live-host matrix: sustained live-input performance, manual REAPER automation recording/playback, exhaustive buffer/rate switching while playing, and extended multi-instance listening remain to be checked. Host automation is exercised by pluginval, and rate/layout/reset behavior by native AU tests. Live asset changes can briefly mute; no gapless model-switch guarantee, unsigned builds, no Intel runtime or physical Windows DAW listening verification. These limits must remain visible rather than being inferred as passing from CI.
+
+The final optimized bundles were installed into the user VST3/Components folders with rollback copies retained in `/tmp`; `auval -v aufx Scor TlDs` passed again. The local ZIP contains both complete Universal bundles, README, MIT license and documentation. No DI audio or private project is packaged.
