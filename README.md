@@ -2,7 +2,7 @@
 
 Scoria is an open-source modern-metal guitar amplifier for Windows x64 VST3 and macOS Universal VST3/AUv2, built with C++17 and iPlug2.
 
-**0.0.3 — M1 acceptance candidate.** Tight Rhythm now combines an MIT-licensed Lum Herbert amp-only NAM capture with the CC0 Jester Cookie Monster 4×12 IR, noise gate and overdrive. It works at 44.1, 48, 88.2 and 96 kHz. The user assessed a render of their guitar DI as a usable rhythm tone. See [VALIDATION.md](docs/VALIDATION.md) for exact host/build results and remaining acceptance checks; this is not a v1.0 production-readiness claim.
+**0.0.4 — M2 validation candidate.** Tight Rhythm now combines an MIT-licensed Lum Herbert amp-only NAM capture with the CC0 Jester Cookie Monster 4×12 IR, noise gate and overdrive. It works at 44.1, 48, 88.2 and 96 kHz. The user assessed a render of their guitar DI as a usable rhythm tone. See [VALIDATION.md](docs/VALIDATION.md) for exact host/build results and remaining acceptance checks; this is not a v1.0 production-readiness claim.
 
 ## Play a guitar DI
 
@@ -10,7 +10,7 @@ Scoria is an open-source modern-metal guitar amplifier for Windows x64 VST3 and 
 2. Rescan in REAPER. Use a supported sample rate and insert Scoria on a mono DI track, or monitor a mono instrument/Hi-Z input. Avoid simultaneous direct dry monitoring from the interface.
 3. New instances select **Tight Rhythm**. Wait for **Assets ready** before live playback. All required models, IRs and licenses are bundled; no downloads, Python, dependency compilation or internet access are needed.
 4. Start with DI peaks around −24 to −12 dBFS and quiet monitoring. Input trim changes drive into the chain; Output level defaults to −12 dB for headroom. Hot pickups or added gain may need attenuation. There is no hidden output limiter.
-5. PEDALS controls gate and boost; AMP selects the audited NAM capture and its processing trims; CAB controls the IR. **Distortion is the amplifier voice**, not a distortion pedal. Phaser, Chorus, Crunch, Clean, Delay and Reverb remain unavailable.
+5. PEDALS controls gate and boost; AMP selects the audited NAM capture and its processing trims; CAB controls the IR. **Distortion is the amplifier voice**, not a distortion pedal. PEDALS adds phaser and chorus; FX provides stereo ping-pong delay and reverb. AMP offers separate Distortion, Crunch and Clean captures.
 6. Save/reopen the project to recall the complete configuration. Global bypass is dry with compensated conversion latency. Use matched listening levels when comparing.
 
 The old **Legacy development rig** remains available for existing sessions. Its RiffSmith capture includes speaker coloration, so its factory preset leaves the extra cabinet off. Explicit cabinet choices in old projects are preserved.
@@ -23,4 +23,8 @@ See [BUILD.md](docs/BUILD.md), [ARCHITECTURE.md](docs/ARCHITECTURE.md) and [VALI
 
 Original code is [MIT](LICENSE.md). Dependencies and assets have separate notices: [LICENSING.md](docs/LICENSING.md), [THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md), [asset manifest](assets/manifest.json). No commercial plugin graphics, proprietary code or guitar recordings are distributed.
 
-Finish the documented M1 host/performance acceptance checks before adding M2 effects.
+M2 adds Modern Lead (Herbert), Ambient Clean (Lum Sebago 1) and Crunch Rhythm (Lum 2204 2). The user liked the Modern Lead and Ambient Clean DI renders. After two level-matched listening revisions, the user approved Crunch Rhythm at −3 dB NAM input / +0.6 dB NAM output. Tight Rhythm and Legacy retain their established settings; old projects restore with new effects off.
+
+Select a pedal or FX tab to show its controls; bypass toggles remain visible. Delay and reverb bypass stop new input and let tails decay. Global bypass excludes the complete chain. Delay time is free-running milliseconds, with ping-pong echoes and a 30 ms crossfade when changing time. Voice selection is independent of effects; the Distortion capture menu applies only to that voice.
+
+See the M2 section of VALIDATION.md for current tests and outstanding native/host/listening acceptance. Do not infer completion from the presence of presets.

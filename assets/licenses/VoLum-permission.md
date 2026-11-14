@@ -20,3 +20,12 @@ with WaveNet submodels (1871 and 12146 weights). It does not contain physical
 knob positions or input-calibration dBu. Scoria describes trims as digital gain
 controls and does not invent physical settings. Selection 4 is the high-gain
 candidate; subjective suitability still requires guitar listening validation.
+
+## M2 Clean and Crunch captures
+
+The same pinned repository, creator attribution and MIT grant cover:
+
+- `rigs/Sebago Texas Flood/AMP-Sbgo-1.nam` → `models/volum-sebago-1.nam`, Clean.
+- `rigs/Marshall 2204 1982/AMP-2204-2.nam` → `models/volum-2204-2.nam`, Crunch.
+
+The pinned `docs/user-guide.en.md` groups Sebago Texas Flood under cleans/blues/dynamic boutique, describing it as a Steel String Singer-style pedal platform. It groups Marshall 2204 under vintage/classic-rock crunch. Both use the documented AMP/No Cab variant. The original file metadata confirms 48 kHz and SlimmableContainer; category and cabinet interpretation come from the author's guide, not invented hardware knob settings. Exact bytes and hashes are recorded in manifest.json. The repository-wide license was rechecked during M2; these directories contain no separate restrictive exception. No VoLum implementation or factory settings were copied.

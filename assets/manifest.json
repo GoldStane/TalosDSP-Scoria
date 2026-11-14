@@ -40,6 +40,34 @@
       "includes_cabinet": false,
       "architecture": "SlimmableContainer (A2 WaveNet; full-size default)",
       "sha256": "cb5c16b8ebb21efd778fba39eb231e27d40646048af105806772903453ff8f4b"
+    },
+    {
+      "id": "lum-sebago-1-v1",
+      "file": "models/volum-sebago-1.nam",
+      "name": "Lum sebago-1 (amp only)",
+      "creator": "Lum / guitarlum (VoLum)",
+      "url": "https://github.com/guitarlum/VoLum/blob/ddb7822ce06df9eaa74156027cf175a9ffe8305a/rigs/Sebago%20Texas%20Flood/AMP-Sbgo-1.nam",
+      "license": "MIT",
+      "permission": "licenses/VoLum-permission.md; licenses/VoLum-MIT.txt",
+      "sample_rate": 48000,
+      "includes_cabinet": false,
+      "architecture": "SlimmableContainer (A2 WaveNet; full-size default)",
+      "voice": "clean",
+      "sha256": "b39c9dcccf49b7154b3911ab4aa3c00e5771cf1c8619f2d3739695a4a2df7297"
+    },
+    {
+      "id": "lum-2204-2-v1",
+      "file": "models/volum-2204-2.nam",
+      "name": "Lum 2204-2 (amp only)",
+      "creator": "Lum / guitarlum (VoLum)",
+      "url": "https://github.com/guitarlum/VoLum/blob/ddb7822ce06df9eaa74156027cf175a9ffe8305a/rigs/Marshall%202204%201982/AMP-2204-2.nam",
+      "license": "MIT",
+      "permission": "licenses/VoLum-permission.md; licenses/VoLum-MIT.txt",
+      "sample_rate": 48000,
+      "includes_cabinet": false,
+      "architecture": "SlimmableContainer (A2 WaveNet; full-size default)",
+      "voice": "crunch",
+      "sha256": "1f98fd7036888aa3d97746a8712c32d3e8155f6a41a5fdbb444471e83a1c3177"
     }
   ]
 }

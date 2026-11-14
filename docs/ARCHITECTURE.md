@@ -1,4 +1,25 @@
-# Architecture — M1 development
+# Architecture — M2 candidate
+
+Version 0.0.4 retains M1's framework, NAM, resampler, cabinet and identifiers. The chain is input → gate → overdrive → phaser → chorus → NAM → cabinet → stereo delay → stereo reverb → output. Mono input runs one pre-cab path and one neural inference stream, then expands to two channels. Stereo input retains independent pre-cab histories. Mono output averages the post-effect channels. Global dry bypass remains aligned at 127/0/186/196 samples at 44.1/48/88.2/96 kHz. No additional buffering latency is introduced by M2 effects; their audible delays are effect responses.
+
+## New DSP
+
+Phaser uses six first-order allpasses, sinusoidal logarithmic cutoff modulation, bounded ±0.9 feedback and input normalization. Chorus uses a 12 ms delay modulated ±4 ms with linear fractional-delay interpolation; it is a mono pre-amp chorus on each independent input channel, not a stereo widener. Controls and enable transitions ramp over 10 ms.
+
+Delay uses two preallocated circular buffers with cross-channel feedback. Mono enters the left wet path, so the first echo is left and the next is right; stereo sources enter their own sides. Delay read positions crossfade over 30 ms without slewing pitch; edits during a crossfade coalesce into the next transition. Feedback is at most 0.95. Reverb is an original eight-line orthogonal Householder FDN, with four input allpass diffusers per side, orthogonal stereo taps, per-line RT60 gains, low-pass damping and normalized DC rejection. Coefficient updates occur every 32 samples independent of host block boundaries. No proprietary effect code or new library was introduced.
+
+Delay/reverb bypass ramp input injection to zero and restore unity dry while existing wet tails decay. Settled empty bypass skips processing; very small decayed states are suppressed. Global bypass excludes tails. Storage allocates at construction and reset only clears it; processing and parameter edits never resize buffers. Maximum capacity covers the engine's 384 kHz rate clamp, although supported NAM/plugin rates remain the four listed above. Hosts receive a conservative 560-second tail bound covering the maximum 2-second, 95%-feedback delay to below −120 dB plus reverb. This can cause excessive automatic tail exports; set an explicit render range in REAPER. Tail reporting should be refined during M3 without truncating automated tails.
+
+## Parameters, assets and compatibility
+
+IDs 0–16 remain unchanged. IDs 17–21 are Phaser enabled/rate/depth/feedback/mix; 22–25 Chorus enabled/rate/depth/mix; 26–29 Delay enabled/time/feedback/mix; 30–33 Reverb enabled/decay/damping/mix; 34 Amplifier voice (0 Distortion, 1 Crunch, 2 Clean). ID16 retains the two Distortion captures. Voice selection resolves to registry index 3 for Crunch and 2 for Clean; it never modifies unrelated effects or the remembered Distortion capture choice.
+
+Schema 4 contains the existing four-word header plus 35 doubles. Versions 1, 2 and 3 read exactly 3, 16 and 17 doubles respectively and initialize all new effects disabled. Validation is transactional, including asset-ID/voice consistency, finite/ranged values and integral selectors. Existing binary v2/v3 fixtures are unchanged; v1 and v4 numeric fixtures are added. Factory stable IDs: 0 Legacy, 1 Tight Rhythm, 2 Modern Lead, 3 Ambient Clean, 4 Crunch Rhythm. Factory menu ordering retains Tight Rhythm first and Legacy second.
+
+The registry appends Lum Sebago 1 (Clean, ID 0x53424731) and Lum 2204 2 (Crunch, ID 0x4d323432). Both are independent amp-only 48 kHz SlimmableContainer/WaveNet captures under the same audited VoLum MIT grant. Worker request packing now reserves eight bits for registry index and 24 for generation; invalid indices fail explicitly. Ownership, off-thread loading/reclamation and exact byte hashes remain unchanged. All assets are copied into and verified inside both bundles.
+
+## Retained M1 implementation reference
+
 
 Scoria retains iPlug2/IGraphics, C++17, the iPlug2OOS build conventions and the original identities: `TlDs` manufacturer, `Scor` product, AU type `aufx`, `com.TalosDSP.vst3.Scoria` and `com.TalosDSP.audiounit.Scoria`. Version 0.0.3 is the M1 acceptance candidate. Only native VST3 and macOS AUv2 are built. GUI remains 800×520 with PEDALS / AMP / CAB / FX.
 

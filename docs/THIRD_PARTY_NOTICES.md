@@ -452,3 +452,7 @@ The build-local iPlug2 AU wrapper adaptation changes state validation order and 
 Distributed unchanged from VoLum commit `ddb7822ce06df9eaa74156027cf175a9ffe8305a`. Creator credit: Lum. Full MIT notice: `assets/licenses/VoLum-MIT.txt`; evidence: `assets/licenses/VoLum-permission.md`. Copyright 2024–2026 Steffen Dangmann and VoLum contributors; portions copyright 2022–2025 Steven Atkinson and contributors.
 
 The build-local VST3 lifecycle adaptation publishes offline rendering mode before reset. It retains the original framework license and does not alter upstream checkouts.
+
+## M2 additions
+
+The original phaser, chorus, delay, reverb and buffer code are MIT Scoria code; no new DSP dependency is linked. Lum Sebago 1 and Lum 2204 2 are unmodified captures from the same pinned VoLum revision and repository-wide MIT grant already reproduced here. The manifest records exact file URLs, SHA-256 hashes, native 48 kHz rate and amp-only metadata. See assets/licenses/VoLum-permission.md for the voice-category evidence. These asset permissions are separate from NAM Core's license. No private guitar audio or REAPER project is distributed.

@@ -36,3 +36,7 @@ CI packages include LICENSE.md, THIRD_PARTY_NOTICES.md and complete plugin bundl
 Lum Herbert 4 comes from `guitarlum/VoLum` at commit `ddb7822ce06df9eaa74156027cf175a9ffe8305a`, `rigs/Diezel Herbert Mk1/AMP-Herb-4.nam`. The author's repository-wide MIT grant permits redistribution; its README credits amp profiles to Lum, and the guide identifies AMP/No Cab captures as amp-only. No separate permission email is claimed. The exact primary-source evidence and license are preserved in `assets/licenses/VoLum-permission.md` and `VoLum-MIT.txt`. The unchanged model hash and architecture are in the manifest. This asset grant is distinct from NAM Core's license. Existing RiffSmith and Jester permissions remain unchanged.
 
 The new polyphase converter is original Scoria code (MIT), with no added resampling dependency. Private DI used for local testing is not distributed.
+
+## M2 additions
+
+The original phaser, chorus, delay, reverb and buffer code are MIT Scoria code; no new DSP dependency is linked. Lum Sebago 1 and Lum 2204 2 are unmodified captures from the same pinned VoLum revision and repository-wide MIT grant already reproduced here. The manifest records exact file URLs, SHA-256 hashes, native 48 kHz rate and amp-only metadata. See assets/licenses/VoLum-permission.md for the voice-category evidence. These asset permissions are separate from NAM Core's license. No private guitar audio or REAPER project is distributed.

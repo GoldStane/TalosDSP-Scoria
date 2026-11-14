@@ -6,3 +6,5 @@ enabled in this saved state: migration must preserve that choice even though the
 legacy capture already contains speaker coloration.
 
 `m1-v3.bin` is the 152-byte state payload saved by REAPER after selecting Tight Rhythm in the updated VST3. It contains only schema/asset/preset IDs and the 17 parameter values. Tests compare it against the complete factory configuration.
+
+M2 adds `m0-v1.bin` (synthetic three-value M0 state) and `m2-v4.bin` (synthetic Modern Lead factory state: four-word header and 35 doubles). Neither contains audio or user/project metadata. Existing v2/v3 payloads remain unchanged.

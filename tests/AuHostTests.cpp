@@ -99,11 +99,15 @@ int main(int argc, char **argv) {
       for (UInt32 id : {3u, 6u, 10u, 13u})
         status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, 0., 0),
                "disable stages for M0 regression");
-      const std::array<float, 17> expected{
-          {6, -3, 0, 0, -47, 173, 0, 23, 61, 9, 0, 2, -4, 0, 1, -2, 1}};
+      std::array<float, 35> expected{{6,  -3, 0, 0,   -47, 173, 0,  23,  61,  9,  0, 2,
+                                      -4, 0,  1, -2,  1,   0,   .7, 42,  -35, 31, 0, 1.2,
+                                      46, 22, 0, 271, 36,  19,  0,  3.7, 63,  17, 0}};
+      for (UInt32 id : {17u, 22u, 26u, 30u})
+        expected[id] = 1.f;
+      expected[34] = 2.f;
       for (UInt32 id = 0; id < expected.size(); ++id)
         status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, expected[id], 0),
-               "set M1 parameters");
+               "set M2 parameters");
       CFPropertyListRef saved = nullptr;
       UInt32 bytes = sizeof(saved);
       status(AudioUnitGetProperty(unit, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0,
@@ -149,8 +153,13 @@ int main(int argc, char **argv) {
         AudioUnitParameterValue value = 0;
         status(AudioUnitGetParameter(unit, id, kAudioUnitScope_Global, 0, &value),
                "read restored parameter");
-        check(value == expected[id], "all M1 parameters survive roundtrip and invalid state");
+        check(value == expected[id], "all M2 parameters survive roundtrip and invalid state");
       }
+      for (UInt32 id : {17u, 22u, 26u, 30u, 34u})
+        status(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, 0.f, 0),
+               "restore dry regression configuration");
+      status(AudioUnitReset(unit, kAudioUnitScope_Global, 0),
+             "clear effect tails for dry regression");
       std::array<float, 2048> left{}, right{};
       struct Buffers {
         UInt32 count;

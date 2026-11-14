@@ -1,8 +1,12 @@
 #pragma once
 #include "Parameters.h"
+#include "dsp/Chorus.h"
 #include "dsp/NoiseGate.h"
 #include "dsp/Overdrive.h"
+#include "dsp/Phaser.h"
 #include "dsp/Resampler.h"
+#include "dsp/StereoDelay.h"
+#include "dsp/StereoReverb.h"
 #include "models/AssetLoader.h"
 #include "models/ModelRegistry.h"
 #include <array>
@@ -21,6 +25,12 @@ public:
       gate.reset(rate_);
     for (auto &drive : drives_)
       drive.reset(rate_);
+    for (auto &effect : phasers_)
+      effect.reset(rate_, p.phaser, p.phaserRate, p.phaserDepth, p.phaserFeedback, p.phaserMix);
+    for (auto &effect : choruses_)
+      effect.reset(rate_, p.chorus, p.chorusRate, p.chorusDepth, p.chorusMix);
+    delay_.reset(rate_, p.delay, p.delayMs, p.delayFeedback, p.delayMix);
+    reverb_.reset(rate_, p.reverb, p.reverbDecay, p.reverbDamping, p.reverbMix);
     const auto values = targets(p);
     for (size_t i = 0; i < controls_.size(); ++i)
       controls_[i].reset(values[i], rate_);
@@ -45,6 +55,12 @@ public:
       controls_[i].set(values[i]);
     for (auto &gate : gates_)
       gate.configure(p.thresholdDb, p.releaseMs);
+    for (auto &effect : phasers_)
+      effect.configure(p.phaser, p.phaserRate, p.phaserDepth, p.phaserFeedback, p.phaserMix);
+    for (auto &effect : choruses_)
+      effect.configure(p.chorus, p.chorusRate, p.chorusDepth, p.chorusMix);
+    delay_.configure(p.delay, p.delayMs, p.delayFeedback, p.delayMix);
+    reverb_.configure(p.reverb, p.reverbDecay, p.reverbDamping, p.reverbMix);
     const bool ampReady = assets_ && assets_->rate == rate_ &&
                           assets_->modelIndex == p.modelIndex && assets_->amplifier.ready();
     const bool cabReady = assets_ && assets_->rate == rate_ && assets_->cabinets[0].ready();
@@ -67,6 +83,8 @@ public:
           const double driven = drives_[c].process(x, modulation_[Drive][i], modulation_[Tone][i],
                                                    modulation_[Level][i]);
           x += (driven - x) * modulation_[OD][i];
+          x = phasers_[c].process(x);
+          x = choruses_[c].process(x);
           preAmp_[c][i] = ampDelay_[c].process(x);
           dry_[c][i] = dryDelay_[c].process(dry_[c][i]);
           wet_[c][i] = x * modulation_[AmpIn][i];
@@ -85,14 +103,24 @@ public:
           const double cabinet =
               cabReady ? assets_->cabinets[c].process(x) * modulation_[CabOut][i] * cabMix : 0.;
           x += (cabinet - x) * modulation_[Cab][i];
-          x *= modulation_[Out][i];
+          result[c] = x;
+        }
+        if (inputChannels != 2) {
+          result[1] = result[0];
+          dry_[1][i] = dry_[0][i];
+        }
+        delay_.process(result[0], result[1], inputChannels != 2);
+        reverb_.process(result[0], result[1]);
+        // A mono output receives the average of the stereo post-effects.
+        if (outputChannels == 1)
+          result[0] = .5 * (result[0] + result[1]);
+        for (int c = 0; c < 2; ++c) {
+          const double x = result[c] * modulation_[Out][i];
           result[c] = !valid ? 0.
                       : modulation_[Bypass][i] == 1.
                           ? dry_[c][i]
                           : finite(x + (dry_[c][i] - x) * modulation_[Bypass][i]);
         }
-        if (inputChannels != 2)
-          result[1] = result[0];
         for (int c = 0; c < outputChannels; ++c)
           if (outputs[c]) {
             const auto value = static_cast<Sample>(finite(c < 2 ? result[c] : 0.));
@@ -134,6 +162,10 @@ private:
   SampleDelay dryDelay_[2], ampDelay_[2];
   NoiseGate gates_[2];
   Overdrive drives_[2];
+  Phaser phasers_[2];
+  Chorus choruses_[2];
+  StereoDelay delay_;
+  StereoReverb reverb_;
   std::array<Ramp, Count> controls_;
   std::array<std::array<double, 256>, Count> modulation_{};
   std::array<std::array<double, 256>, 2> dry_{}, preAmp_{}, wet_{};

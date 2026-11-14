@@ -1,3 +1,21 @@
+# M2 validation — 0.0.4 candidate
+
+## Resumed completion pass (2026-11-15)
+
+The branch starts from M1 completion `52a211e`. Its latest CI run `40902507147` passed Windows and failed macOS configuration because GitLab refused the pinned Eigen submodule clone due to server load, before compilation. The preceding code revision passed both native runners (`40880652083`). M2 native CI must be recorded independently.
+
+The original M2 implementation pass built Universal VST3/AU and passed 5/5 native CTest tests; pluginval 1.0.4 strictness 5 also passed. After resuming and strengthening AU coverage to restore all four new effects enabled and Clean selected, `cmake --build build-m1-native --parallel 4` and `ctest --test-dir build-m1-native --output-on-failure` pass again: **5/5, 2.76 seconds**. Sandbox-only AU registration failure was rerun with macOS service access. ASan+UBSan passed 4/4 portable tests in 135.43 seconds on this resumed pass. Final package/host checks remain separate.
+
+New tests cover static allpass impulse energy, modulation periodicity, extreme phaser feedback, chorus fractional-delay timing, exact ping-pong echoes/feedback, delay time transitions and bypass tails, finite decorrelated decaying reverb, parameter changes, all four rates, block sizes 1/17/64/128/256/511/2048, deterministic output, in-place mono downmix, aligned global bypass and C++ allocation counters. Registry tests exercise new captures at all supported rates, worker voice replacement and invalid model indices. Binary schemas 1–4 load; all old fixtures keep new effects off. AU tests round-trip all 35 parameters including enabled new effects and voice selection. Existing M1/core tests continue running.
+
+The full private DI rendered through Tight Rhythm byte-for-byte identically to the saved M1 float32 output before temporary files were cleared. The original new-preset stereo renders were finite: Modern Lead peak 0.254692, Ambient Clean 0.108345, Crunch Rhythm 0.260755. The user liked Modern Lead and Ambient Clean and reported harshness in Crunch Rhythm. The user found a −6 dB input revision too clean, then approved the midpoint: −3 dB input and +0.6 dB output. The final render peak is 0.267606 and RMS 0.0545111, close to the original 0.0539988 RMS. Modern Lead and Ambient Clean are unchanged. This is a preset tuning change only, not a hidden replacement of the capture or the M1 sound.
+
+Offline Apple M4 / AppleClang Release, full Herbert WaveNet + cabinet, 1000 timed blocks after 50 warmup blocks per case: at 48 kHz stereo/256 frames effects-off mean/p95/p99/max = 548.246/562.166/574.916/589.208 µs, all-effects-on = 566.782/584.583/602.792/653.875 µs. At 96 kHz stereo/256: off 751.485/771.042/790.75/843.083 µs, on 776.292/797.833/833.5/885.25 µs. All four rates, mono/stereo input and 64/128/256 frames were measured. Mean overhead in most cases was approximately 3–5%; one noisy 44.1 kHz mono/64 baseline exceeded the effects-on time. These are offline observations, not guaranteed live deadlines or an isolated pre-M2 binary benchmark. Reproduce with `build-m1-native/scoria_effects_benchmark assets`.
+
+M2 remains a validation candidate until current native CI, installed editor/REAPER regression are checked. The broad M1 live-monitoring/multiple-buffer/Windows physical-host acceptance matrix remains outstanding. New effects have not been tested on a physical Windows DAW or Intel Mac. New models have explicit MIT provenance and require no runtime downloads. Signing/notarization are not claimed.
+
+## Historical M1 record
+
 # Validation — 0.0.3 M1 acceptance candidate
 
 ## Current completion pass (2026-10-28)

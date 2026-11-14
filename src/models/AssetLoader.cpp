@@ -2,6 +2,7 @@
 #include "dsp/WavImpulse.h"
 #include <chrono>
 #include <filesystem>
+#include <stdexcept>
 namespace scoria {
 static_assert(std::atomic<ProcessingAssets *>::is_always_lock_free &&
                   std::atomic<std::uint64_t>::is_always_lock_free,
@@ -16,15 +17,17 @@ AssetLoader::~AssetLoader() {
   delete retired_.exchange(nullptr);
 }
 void AssetLoader::request(double rate, int modelIndex, bool force) noexcept {
-  constexpr std::uint64_t mask = (std::uint64_t(1) << 33) - 1;
-  const auto configuration = (std::uint64_t(modelIndex == 1 ? 1 : 0) << 32) |
-                             std::uint32_t(supportedRate(rate) ? rate : 0);
+  constexpr std::uint64_t mask = (std::uint64_t(1) << 40) - 1;
+  const auto configuration =
+      (std::uint64_t(modelIndex >= 0 && modelIndex < int(kModels.size()) ? modelIndex : 255)
+       << 32) |
+      std::uint32_t(supportedRate(rate) ? rate : 0);
   auto previous = request_.load();
   do {
     if (!force && (previous & mask) == configuration)
       return;
   } while (!request_.compare_exchange_weak(
-      previous, ((previous & ~mask) + (std::uint64_t(1) << 33)) | configuration));
+      previous, ((previous & ~mask) + (std::uint64_t(1) << 40)) | configuration));
 }
 bool AssetLoader::waitForPreparation() noexcept {
   const auto requested = request_.load();
@@ -56,7 +59,7 @@ void AssetLoader::work() {
         next->generation = generation;
         const auto request = generation;
         next->rate = double(std::uint32_t(request));
-        next->modelIndex = int((request >> 32) & 1);
+        next->modelIndex = int((request >> 32) & 255);
         std::string error;
         bool cab = false;
         try {
@@ -66,6 +69,8 @@ void AssetLoader::work() {
           cab = true;
         } catch (...) {
         }
+        if (next->modelIndex >= int(kModels.size()))
+          throw std::runtime_error("Unknown model index");
         const auto path = next->modelIndex == 0 ? std::filesystem::u8path(model_)
                                                 : std::filesystem::u8path(model_).parent_path() /
                                                       kModels[next->modelIndex].file;

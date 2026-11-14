@@ -1,4 +1,4 @@
-# Building and validating Scoria 0.0.3
+# Building and validating Scoria 0.0.4
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ CMake 3.25+, Git, and a C++17 compiler. Windows requires Visual Studio 2022 Desk
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DIPLUG_DEPLOY_PLUGINS=OFF
-cmake --build build --target Scoria-vst3 scoria_au_tests scoria_tests scoria_dsp_tests scoria_completion_tests --parallel 4
+cmake --build build --target Scoria-vst3 scoria_au_tests scoria_tests scoria_dsp_tests scoria_completion_tests scoria_effects_tests --parallel 4
 ctest --test-dir build --output-on-failure
 lipo -archs build/out/Scoria.vst3/Contents/MacOS/Scoria
 lipo -archs build/out/Scoria.component/Contents/MacOS/Scoria
@@ -20,7 +20,7 @@ The AU integration test loads the built bundle and registers its factory only in
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DIPLUG_DEPLOY_PLUGINS=OFF
-cmake --build build --config Release --target Scoria-vst3 scoria_tests scoria_dsp_tests scoria_completion_tests --parallel 4
+cmake --build build --config Release --target Scoria-vst3 scoria_tests scoria_dsp_tests scoria_completion_tests scoria_effects_tests --parallel 4
 ctest --test-dir build -C Release --output-on-failure
 ```
 
@@ -63,8 +63,14 @@ Record palm-muted low notes, fast riffs, sustained notes, chords and double-trac
 
 ## Assets and packaging
 
-Configuration and post-build bundle verification check every manifest SHA-256. The build copies `assets/` into **both** native bundle Resources directories. Keep these directories intact. Do not substitute arbitrary `.nam` files: this development build accepts only the two audited registry model hashes. NAM Core and Eigen are fetched at pinned commits during development, not by end users. The plugin works offline after installation.
+Configuration and post-build bundle verification check every manifest SHA-256. The build copies `assets/` into **both** native bundle Resources directories. Keep these directories intact. Do not substitute arbitrary `.nam` files: this development build accepts only the four audited registry model hashes. NAM Core and Eigen are fetched at pinned commits during development, not by end users. The plugin works offline after installation.
 
 To reproduce timing output, run `build/scoria_dsp_tests /absolute/path/to/assets` (Windows: `build/Release/scoria_dsp_tests.exe`). This is an offline synthetic-input benchmark, not a live DAW callback guarantee. Debug/sanitizer runs are unsuitable for production CPU estimates.
 
 The developer-only `scoria_render_test` accepts asset directory, raw mono float64 input, raw mono float32 output and sample rate. It prepares assets before rendering, strips declared latency and never ships in plugin packages. Do not commit private DI audio. `scoria_completion_tests` prints full-chain timings at all supported rates.
+
+## M2 developer validation
+
+`scoria_effects_tests assets` covers the new stages, routing and state migration. `scoria_effects_benchmark assets` prints CSV: host rate, input channels, block frames, all-effects enabled, mean/p95/p99/max microseconds (1000 timed callbacks after 50 warm-up blocks). Compare effects-off and effects-on in the same run; this is offline timing, not a host deadline guarantee.
+
+`scoria_render_test assets input.f64 output.f32 rate [preset-id] [output-channels] [tail-seconds]` renders local private test audio. Output is raw interleaved float32 for two channels. Preset IDs are documented in ARCHITECTURE.md. These developer utilities never ship as a standalone application.
