@@ -2,7 +2,7 @@
 
 Scoria is an open-source modern-metal guitar amplifier for Windows x64 VST3 and macOS Universal VST3/AUv2, built with C++17 and iPlug2.
 
-**0.0.4 — M2 validation candidate.** Tight Rhythm now combines an MIT-licensed Lum Herbert amp-only NAM capture with the CC0 Jester Cookie Monster 4×12 IR, noise gate and overdrive. It works at 44.1, 48, 88.2 and 96 kHz. The user assessed a render of their guitar DI as a usable rhythm tone. See [VALIDATION.md](docs/VALIDATION.md) for exact host/build results and remaining acceptance checks; this is not a v1.0 production-readiness claim.
+**0.0.4 — M2 engineering complete; extended live-host acceptance pending.** Tight Rhythm now combines an MIT-licensed Lum Herbert amp-only NAM capture with the CC0 Jester Cookie Monster 4×12 IR, noise gate and overdrive. It works at 44.1, 48, 88.2 and 96 kHz. The user assessed a render of their guitar DI as a usable rhythm tone. See [VALIDATION.md](docs/VALIDATION.md) for exact host/build results and remaining acceptance checks; this is not a v1.0 production-readiness claim.
 
 ## Play a guitar DI
 
@@ -27,4 +27,4 @@ M2 adds Modern Lead (Herbert), Ambient Clean (Lum Sebago 1) and Crunch Rhythm (L
 
 Select a pedal or FX tab to show its controls; bypass toggles remain visible. Delay and reverb bypass stop new input and let tails decay. Global bypass excludes the complete chain. Delay time is free-running milliseconds, with ping-pong echoes and a 30 ms crossfade when changing time. Voice selection is independent of effects; the Distortion capture menu applies only to that voice.
 
-See the M2 section of VALIDATION.md for current tests and outstanding native/host/listening acceptance. Do not infer completion from the presence of presets.
+Windows x64 and macOS Universal native CI pass, as do local DSP/AU tests, pluginval and auval. REAPER saved-preset recall and repeated DI renders were verified. See the M2 section of VALIDATION.md for exact evidence and remaining live-host checks; this is not full public-release acceptance.
