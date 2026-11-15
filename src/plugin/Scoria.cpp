@@ -99,10 +99,14 @@ Scoria::Scoria(const InstanceInfo &info) : Plugin(info, MakeConfig(scoria::Param
     const int pedalIds[]{scoria::GateEnabled, scoria::OverdriveEnabled, scoria::PhaserEnabled,
                          scoria::ChorusEnabled};
     const char *pedalNames[]{"Gate", "Overdrive", "Phaser", "Chorus"};
-    for (int i = 0; i < 4; ++i)
-      attach(new IVToggleControl(IRECT(25, 300 + i * 36, 180, 333 + i * 36), pedalIds[i],
-                                 pedalNames[i], labelStyle),
+    for (int i = 0; i < 4; ++i) {
+      attach(new ITextControl(IRECT(25, 300 + i * 36, 115, 333 + i * 36), pedalNames[i],
+                              IText(15, COLOR_WHITE)),
              0);
+      attach(new IVToggleControl(IRECT(120, 300 + i * 36, 180, 333 + i * 36), pedalIds[i], "",
+                                 labelStyle.WithShowLabel(false)),
+             0);
+    }
     attach(new IVToggleControl(IRECT(25, 310, 180, 365), scoria::DelayEnabled, "Delay", labelStyle),
            3);
     attach(

@@ -14,6 +14,14 @@ Offline Apple M4 / AppleClang Release, full Herbert WaveNet + cabinet, 1000 time
 
 M2 remains a validation candidate until current native CI, installed editor/REAPER regression are checked. The broad M1 live-monitoring/multiple-buffer/Windows physical-host acceptance matrix remains outstanding. New effects have not been tested on a physical Windows DAW or Intel Mac. New models have explicit MIT provenance and require no runtime downloads. Signing/notarization are not claimed.
 
+## Installed-host completion checks
+
+The final DSP/preset binary passed pluginval 1.0.4 strictness 5 and installed `auval -v aufx Scor TlDs` on 2026-11-15. Both bundles contain arm64 and x86_64 slices. REAPER 7.34 arm64 loaded 0.0.4, restored the legacy v2 project, displayed all five factory presets, and recalled Modern Lead. A separate `/tmp` project was saved; private source projects and DI were not committed. The device was at 16 kHz, which correctly showed an unsupported-rate status, so live monitoring was not claimed.
+
+Two independent full-speed offline REAPER renders at 44.1 kHz, 24-bit stereo, Modern Lead, with three seconds of tail, were byte-identical PCM: 607103 frames; SHA-256 `6a274006ecb36c9626869c5c85e9a4eece7c2468a5f75df55d7d2fec8ae79b47`. REAPER reported no clipped samples. The editor inspection found undersized pedal bypass faces; a layout-only follow-up moves their labels alongside full-height buttons. Final source still needs that layout's installed visual recheck.
+
+Native run `43652851829` for `4fc746c` passed Windows x64 build/tests/package; macOS was cancelled, not failed or verified. A follow-up run is required. Extended live monitoring, REAPER automation recording, multiple active instances and physical Windows host listening remain manual acceptance items. The conservative 560-second tail report can overextend automatic exports; use explicit tail length.
+
 ## Historical M1 record
 
 # Validation — 0.0.3 M1 acceptance candidate
